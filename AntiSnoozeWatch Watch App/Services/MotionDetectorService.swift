@@ -179,23 +179,39 @@ class MotionDetectorService: NSObject, ObservableObject {
         }
     }
     
-    // 拡張ランタイムセッションを開始（修正版）
+    // startExtendedRuntimeSession メソッドを修正
     private func startExtendedRuntimeSession() {
         // 既に実行中なら新しいセッションを開始しない
-        if isExtendedSessionActive { return }
+        if isExtendedSessionActive || extendedSession != nil {
+            print("既にセッションが実行中または開始中です")
+            return
+        }
         
-        // 既存のセッションを終了（念のため）
-        extendedSession?.invalidate()
-        extendedSession = nil
-        
-        // 新しいセッションを作成
+        // 既存のセッションを完全に終了
+        if let existingSession = extendedSession {
+            existingSession.invalidate()
+            extendedSession = nil
+            print("既存のセッションを無効化しました")
+            
+            // 少し遅延させてから新しいセッションを開始
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.createAndStartNewSession()
+            }
+        } else {
+            createAndStartNewSession()
+        }
+    }
+
+    // 新しいセッションを作成して開始する補助メソッド
+    private func createAndStartNewSession() {
         let session = WKExtendedRuntimeSession()
         session.delegate = self
-        session.start()
         extendedSession = session
-        isExtendedSessionActive = true
         
-        print("拡張ランタイムセッション開始")
+        // セッション開始前にフラグを設定
+        isExtendedSessionActive = true
+        print("新しい拡張ランタイムセッションを開始します")
+        session.start()
     }
     
     // モーション監視を停止

@@ -117,6 +117,24 @@ class WatchConnectivityManager: NSObject, ObservableObject {
         }
     }
     
+    // WCSessionの初期化を確実に行うメソッド
+    func activateSession() {
+        // セッションが既に有効化されていないことを確認
+        if session.activationState != .activated {
+            session.activate()
+            print("WCSessionを有効化しました: \(Date())")
+        } else {
+            print("WCSessionは既に有効化されています")
+            // 状態を更新
+            DispatchQueue.main.async {
+                self.isReachable = self.session.isReachable
+                #if os(iOS)
+                self.isWatchAppInstalled = self.session.isWatchAppInstalled
+                #endif
+            }
+        }
+    }
+    
     // アラームアクションを送信
     func sendAlarmAction(_ action: AlarmAction) {
         do {
