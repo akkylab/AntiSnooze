@@ -23,8 +23,8 @@ class MotionDetectorService: NSObject, ObservableObject {
     private let backgroundManager = BackgroundModeManager.shared
     
     // 検知パラメータ - 閾値を分けることでヒステリシスを導入
-    private let lyingDownAngleThreshold: Double = 100.0  // 横になりの閾値を高くする（元: 70.0）
-    private let standUpAngleThreshold: Double = 60.0     // 起き上がりの閾値は低くする（新規）
+    private let lyingDownAngleThreshold: Double = 140.0  // 横になりの閾値をさらに高くする（元: 100.0）
+    private let standUpAngleThreshold: Double = 80.0     // 起き上がりの閾値も高くする（元: 60.0）
     private let significantMotionThreshold: Double = 0.3
     private let motionCheckInterval: TimeInterval = 1.0
     private let dozeOffDuration: TimeInterval = 180.0
@@ -42,6 +42,11 @@ class MotionDetectorService: NSObject, ObservableObject {
     // フィルタリング用
     private var filteredTiltAngle: Double = 90.0
     private let angleFilterFactor: Double = 0.3 // フィルタリング係数
+    
+    // 状態変更のクールダウン用（修正点1: クールダウン変数追加）
+    private var lastStateChangeTime: Date = Date()
+    private var stateChangeCooldownActive = false
+    private let stateChangeCooldownDuration: TimeInterval = 10.0 // 状態変化後のクールダウン時間（秒）
     
     private var motionCheckTimer: Timer?
     private var dozeOffTimer: Timer?
@@ -102,6 +107,12 @@ class MotionDetectorService: NSObject, ObservableObject {
         // 動きの量を保存
         sleepState.motionLevel = abs(totalAcceleration)
         
+        // 重力ベクトルとの角度を計算（デバイスの傾き検出）
+        let rawTiltAngle = atan2(sqrt(x*x + y*y), z) * 180.0 / .pi
+        
+        // ローパスフィルタでノイズを低減（移動平均フィルタ）
+        filteredTiltAngle = (filteredTiltAngle * (1 - angleFilterFactor)) + (rawTiltAngle * angleFilterFactor)
+        
         // 有意な動きがあるかチェック
         if sleepState.motionLevel > significantMotionThreshold {
             sleepState.lastSignificantMotionTime = Date()
@@ -113,15 +124,26 @@ class MotionDetectorService: NSObject, ObservableObject {
                 significantMotionCount += 1
                 print("連続動き検出: \(significantMotionCount)回目")
                 
-                // 連続動きが閾値を超えた場合、起床状態と判断
-                if significantMotionCount >= motionCountThresholdForWakeUp && sleepState.isLyingDown {
-                    print("連続動きにより起床と判断: \(significantMotionCount)回の動きを検出")
-                    sleepState.isLyingDown = false
-                    
-                    // アラームサービスに通知
-                    if AlarmService.shared.isWaitingForWakeUp {
-                        print("連続動きによる起床検知完了")
-                        AlarmService.shared.wakeUpDetected()
+                // 連続動きが閾値を超えた場合、起床状態に設定し、一定時間この状態を維持
+                // 修正点2: 連続動き検出時の処理を強化
+                if significantMotionCount >= motionCountThresholdForWakeUp {
+                    if sleepState.isLyingDown {
+                        print("連続動きにより起床と判断: \(significantMotionCount)回の動きを検出")
+                        sleepState.isLyingDown = false
+                        lastStateChangeTime = now // 状態変化時刻を記録
+                        stateChangeCooldownActive = true // クールダウン開始
+                        
+                        // 起床完了通知
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("WakeUpDetected"),
+                            object: nil
+                        )
+                        
+                        // アラームサービスに通知
+                        if AlarmService.shared.isWaitingForWakeUp {
+                            print("連続動きによる起床検知完了")
+                            AlarmService.shared.wakeUpDetected()
+                        }
                     }
                 }
             } else {
@@ -141,21 +163,34 @@ class MotionDetectorService: NSObject, ObservableObject {
             }
         }
         
-        // 重力ベクトルとの角度を計算（デバイスの傾き検出）
-        let rawTiltAngle = atan2(sqrt(x*x + y*y), z) * 180.0 / .pi
+        // 修正点3: 状態変更のクールダウン処理
+        if stateChangeCooldownActive {
+            let elapsedTimeSinceChange = Date().timeIntervalSince(lastStateChangeTime)
+            if elapsedTimeSinceChange >= stateChangeCooldownDuration {
+                // クールダウン終了
+                stateChangeCooldownActive = false
+                print("状態変化クールダウン終了")
+            } else {
+                // クールダウン中は角度による状態変化を無視
+                // 修正点4: デバッグログを追加
+                if !sleepState.isLyingDown {
+                    print("クールダウン中のため角度による状態変化無視: 経過=\(elapsedTimeSinceChange)秒, 角度=\(filteredTiltAngle)°")
+                }
+                return
+            }
+        }
         
-        // ローパスフィルタでノイズを低減（移動平均フィルタ）
-        filteredTiltAngle = (filteredTiltAngle * (1 - angleFilterFactor)) + (rawTiltAngle * angleFilterFactor)
-        
-        // 体の向きを判断（ヒステリシスを導入）
+        // 修正点5: 角度による状態変化の処理（クールダウン中は実行されない）
         let wasLyingDown = sleepState.isLyingDown
         
         // 状態変化の判定（ヒステリシス付き）
         if wasLyingDown && filteredTiltAngle < standUpAngleThreshold {
             // 横になっている状態から起き上がりの可能性
+            print("起き上がり候補を検出: 角度 \(filteredTiltAngle)° (フィルタ適用済み)")
             handlePotentialStateChange(to: false, angle: filteredTiltAngle)
         } else if !wasLyingDown && filteredTiltAngle > lyingDownAngleThreshold {
             // 起き上がっている状態から横になりの可能性
+            print("横になり候補を検出: 角度 \(filteredTiltAngle)° (フィルタ適用済み)")
             handlePotentialStateChange(to: true, angle: filteredTiltAngle)
         } else {
             // 状態変化の可能性がなくなった場合はリセット
@@ -169,9 +204,16 @@ class MotionDetectorService: NSObject, ObservableObject {
         }
     }
     
-    // 状態変化の持続時間を確認するメソッド（新規追加）
+    // 状態変化の持続時間を確認するメソッド
     private func handlePotentialStateChange(to newLyingState: Bool, angle: Double) {
         let now = Date()
+        
+        // 修正点6: デバッグログを追加
+        print("状態変化検討中: 現在=\(sleepState.isLyingDown ? "横" : "起床"), 角度=\(angle)°, 動き=\(sleepState.motionLevel), 最後の動き=\(Date().timeIntervalSince(sleepState.lastSignificantMotionTime))秒前")
+        
+        // 修正点7: 複合判定の導入
+        // 最近の動きがあるか
+        let recentMotionExists = Date().timeIntervalSince(sleepState.lastSignificantMotionTime) < 3.0
         
         // 状態変化の開始時間を記録
         if potentialStateChangeTime == nil {
@@ -185,7 +227,24 @@ class MotionDetectorService: NSObject, ObservableObject {
             
             // 状態を変更
             if sleepState.isLyingDown != newLyingState {
+                // 修正点8: 状態変更前に追加チェック
+                // 起き上がりの場合、最近の動きがあることも条件に
+                if !newLyingState && !recentMotionExists {
+                    print("起き上がり条件不足: 最近の動きがありません")
+                    potentialStateChangeTime = nil
+                    return
+                }
+                
+                // 横になりの場合は、厳しくチェック
+                if newLyingState && Date().timeIntervalSince(lastStateChangeTime) < stateChangeCooldownDuration/2 {
+                    print("横になり判定を無視: 前回の状態変化から\(Date().timeIntervalSince(lastStateChangeTime))秒")
+                    potentialStateChangeTime = nil
+                    return
+                }
+                
+                // 状態を変更
                 sleepState.isLyingDown = newLyingState
+                lastStateChangeTime = now // 状態変化時刻を記録
                 
                 if newLyingState {
                     print("横になりました: 角度 \(angle)° (フィルタ適用済み)")
