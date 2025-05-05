@@ -36,7 +36,11 @@ class WatchConnectivityManager: NSObject, ObservableObject {
     
     // 通信状態
     @Published var isReachable = false
-    @Published var isCompanionAppInstalled = false
+    #if os(iOS)
+    @Published var isWatchAppInstalled = false
+    #elseif os(watchOS)
+    @Published var isCompanionAppInstalled = true // watchOSでは常にtrue
+    #endif
     
     // イニシャライザ
     override init() {
@@ -67,13 +71,25 @@ class WatchConnectivityManager: NSObject, ObservableObject {
                 session.sendMessage(message, replyHandler: nil) { error in
                     print("Error sending message: \(error.localizedDescription)")
                 }
-            } else if session.isCompanionAppInstalled {
-                // 到達不可でもデータ更新できるようにする
+            } else {
+                #if os(iOS)
+                // iOS側の処理
+                if session.isPaired && session.isWatchAppInstalled {
+                    // Watchアプリがインストールされている場合
+                    do {
+                        try session.updateApplicationContext(message)
+                    } catch {
+                        print("Error updating application context: \(error.localizedDescription)")
+                    }
+                }
+                #elseif os(watchOS)
+                // watchOS側の処理
                 do {
                     try session.updateApplicationContext(message)
                 } catch {
                     print("Error updating application context: \(error.localizedDescription)")
                 }
+                #endif
             }
         } catch {
             print("Error encoding alarm settings: \(error.localizedDescription)")
@@ -135,7 +151,11 @@ extension WatchConnectivityManager: WCSessionDelegate {
             
             // 接続状態を更新
             self.isReachable = session.isReachable
-            self.isCompanionAppInstalled = session.isCompanionAppInstalled
+            #if os(iOS)
+            self.isWatchAppInstalled = session.isWatchAppInstalled
+            #elseif os(watchOS)
+            self.isCompanionAppInstalled = true // watchOSでは常にtrue
+            #endif
         }
     }
     
