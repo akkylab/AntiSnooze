@@ -89,20 +89,6 @@
 			);
 			target = DA0723132DC883B6004E50C8 /* AntiSnoozeWatch Watch App */;
 		};
-		DA07236D2DC8BC0C004E50C8 /* Exceptions for "AntiSnoozeWatch Watch App" folder in "AntiSnooze" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Services/AlarmService.swift,
-			);
-			target = DA0722E42DC880A0004E50C8 /* AntiSnooze */;
-		};
-		DA0723722DC8BD6F004E50C8 /* Exceptions for "AntiSnoozeWatch Watch App" folder in "AntiSnoozeWatch Watch App" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Services/AlarmService.swift,
-			);
-			target = DA0723132DC883B6004E50C8 /* AntiSnoozeWatch Watch App */;
-		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -126,10 +112,6 @@
 		};
 		DA0723152DC883B6004E50C8 /* AntiSnoozeWatch Watch App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				DA07236D2DC8BC0C004E50C8 /* Exceptions for "AntiSnoozeWatch Watch App" folder in "AntiSnooze" target */,
-				DA0723722DC8BD6F004E50C8 /* Exceptions for "AntiSnoozeWatch Watch App" folder in "AntiSnoozeWatch Watch App" target */,
-			);
 			path = "AntiSnoozeWatch Watch App";
 			sourceTree = "<group>";
 		};

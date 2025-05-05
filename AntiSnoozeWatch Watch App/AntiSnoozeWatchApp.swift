@@ -1,17 +1,11 @@
-//
-//  AntiSnoozeWatchApp.swift
-//  AntiSnoozeWatch Watch App
-//
-//  Created by 西峯弘晃 on 2025/05/05.
-//
-
+// AntiSnoozeWatch Watch App/AntiSnoozeWatchApp.swift
 import SwiftUI
 
 @main
 struct AntiSnoozeWatch_Watch_AppApp: App {
     var body: some Scene {
         WindowGroup {
-            MainView()
+            WatchMainView() // MainViewからWatchMainViewに変更
         }
     }
 }
