@@ -1,7 +1,7 @@
 // AntiSnoozeWatch Watch App/Services/AlarmService.swift
 import Foundation
 import UserNotifications
-import WatchKit
+import SwiftUI // WatchKitの代わりにSwiftUIをインポート
 
 class AlarmService: ObservableObject {
     static let shared = AlarmService()
@@ -98,37 +98,54 @@ class AlarmService: ObservableObject {
         SettingsManager.shared.addAlarmHistory(newHistory)
     }
     
-    // 振動を実行
+    // 振動を実行（WKInterfaceDeviceの代わりにWKHapticTypeを使用）
     func executeVibration(intensity: VibrationIntensity) {
+        #if os(watchOS)
         switch intensity {
         case .light:
-            WKInterfaceDevice.current().play(.notification)
+            // 軽い振動
+            if let device = WKApplication.shared().device {
+                device.play(.notification)
+            }
         case .medium:
-            WKInterfaceDevice.current().play(.start)
-            // 1秒後に再度振動
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                WKInterfaceDevice.current().play(.stop)
+            // 中程度の振動
+            if let device = WKApplication.shared().device {
+                device.play(.click)
+                // 1秒後に再度振動
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    device.play(.click)
+                }
             }
         case .strong:
-            // 連続振動のループを開始
+            // 強い振動 - 連続振動のループを開始
             startContinuousVibration()
         }
+        #else
+        // iOS側では別の振動方法を使用（または何もしない）
+        print("振動機能はwatchOSのみで有効です")
+        #endif
     }
     
     private var vibrationTimer: Timer?
     
     // 連続振動を開始
     func startContinuousVibration() {
+        #if os(watchOS)
         // 既存のタイマーを停止
         vibrationTimer?.invalidate()
         
         // 新しいタイマーを開始（2秒ごとに振動）
         vibrationTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { _ in
-            WKInterfaceDevice.current().play(.success)
+            if let device = WKApplication.shared().device {
+                device.play(.success)
+            }
         }
         
         // 最初の振動を即実行
-        WKInterfaceDevice.current().play(.success)
+        if let device = WKApplication.shared().device {
+            device.play(.success)
+        }
+        #endif
     }
     
     // 振動を停止
