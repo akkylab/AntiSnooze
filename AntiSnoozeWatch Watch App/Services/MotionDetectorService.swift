@@ -139,11 +139,9 @@ class MotionDetectorService: NSObject, ObservableObject {
                             object: nil
                         )
                         
-                        // アラームサービスに通知
-                        if AlarmService.shared.isWaitingForWakeUp {
-                            print("連続動きによる起床検知完了")
-                            AlarmService.shared.wakeUpDetected()
-                        }
+                        // 状態に関わらず、アラームを停止する（修正点）
+                        print("連続動きによる起床検知完了 - アラームを停止します")
+                        AlarmService.shared.completelyStopAlarm()
                     }
                 }
             } else {
@@ -263,11 +261,9 @@ class MotionDetectorService: NSObject, ObservableObject {
                     // 動き検出カウントをリセット（起き上がりを確認したため）
                     significantMotionCount = 0
                     
-                    // アラームサービスが起床待ち状態の場合、起床をより早く検知
-                    if AlarmService.shared.isWaitingForWakeUp {
-                        print("起床待ち中に起き上がりを検出: 起床確認を開始")
-                        startUprightDetection()
-                    }
+                    // アラームを完全に停止（修正点を追加）
+                    print("角度検知による起床確認 - アラームを停止します")
+                    AlarmService.shared.completelyStopAlarm()
                 }
             }
             
@@ -302,10 +298,9 @@ class MotionDetectorService: NSObject, ObservableObject {
                         object: nil
                     )
                     
-                    // アラームに起床完了を通知
-                    if AlarmService.shared.isWaitingForWakeUp {
-                        AlarmService.shared.wakeUpDetected()
-                    }
+                    // アラームを完全に停止（修正点）
+                    print("連続時間による起床検知完了 - アラームを停止します")
+                    AlarmService.shared.completelyStopAlarm()
                     
                     // 検知完了
                     self.stopUprightDetection()
