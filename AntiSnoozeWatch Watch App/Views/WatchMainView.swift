@@ -1,4 +1,4 @@
-// AntiSnoozeWatch Watch App/Views/WatchMainView.swift
+// AntiSnoozeWatch Watch App/Views/WatchMainView.swift の変更
 import SwiftUI
 import UserNotifications
 import WatchKit
@@ -8,7 +8,7 @@ struct WatchMainView: View {
     @ObservedObject private var settingsManager = SettingsManager.shared
     @ObservedObject private var motionService = MotionDetectorService.shared
     @State private var showingSettings = false
-    @State private var showingTimeSetting = false // 時間設定画面表示用のフラグを追加
+    @State private var showingTimeSetting = false
     
     var body: some View {
         ScrollView {
@@ -32,7 +32,7 @@ struct WatchMainView: View {
                     }
                     .padding(.horizontal, 6)
                 
-                // 時間設定ボタン - DatePickerをボタンに置き換え
+                // 時間設定ボタン
                 Button(action: {
                     showingTimeSetting = true
                 }) {
@@ -52,18 +52,89 @@ struct WatchMainView: View {
                 
                 if alarmService.isAlarmActive {
                     // アラーム起動中の表示と操作ボタン
-                    Button(action: {
-                        alarmService.stopAlarm()
-                    }) {
-                        Text("停止")
-                            .font(.caption)
-                            .foregroundColor(.white)
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 15)
-                            .background(Color.red)
-                            .cornerRadius(8)
+                    
+                    // 新UI: 起床状態表示
+                    if motionService.isMonitoring {
+                        if alarmService.isWaitingForWakeUp {
+                            // 起床検知中表示
+                            Text("起床確認中...")
+                                .font(.caption)
+                                .foregroundColor(.green)
+                                .padding(.vertical, 4)
+                        } else {
+                            // 通常の姿勢検知表示
+                            Text(motionService.sleepState.isLyingDown ? "横になっています" : "起きています")
+                                .font(.caption)
+                                .foregroundColor(motionService.sleepState.isLyingDown ? .red : .green)
+                                .padding(.vertical, 4)
+                        }
                     }
                     
+                    // 振動状態表示
+                    if alarmService.isVibrating {
+                        HStack {
+                            Image(systemName: "waveform.circle.fill")
+                                .foregroundColor(alarmService.temporaryPaused ? .orange : .blue)
+                            
+                            Text(alarmService.temporaryPaused ? "一時停止中" : "振動中")
+                                .font(.caption2)
+                                .foregroundColor(alarmService.temporaryPaused ? .orange : .blue)
+                        }
+                        .padding(.bottom, 8)
+                    }
+                    
+                    // 操作ボタン: 一時停止/再開と完全停止
+                    HStack(spacing: 12) {
+                        if alarmService.temporaryPaused {
+                            // 再開ボタン
+                            Button(action: {
+                                alarmService.resumeFromTemporaryPause()
+                            }) {
+                                Text("再開")
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                                    .padding(.vertical, 8)
+                                    .padding(.horizontal, 12)
+                                    .background(Color.blue)
+                                    .cornerRadius(8)
+                            }
+                        } else {
+                            // 一時停止ボタン
+                            Button(action: {
+                                alarmService.temporaryPauseAlarm()
+                            }) {
+                                Text("一時停止")
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                                    .padding(.vertical, 8)
+                                    .padding(.horizontal, 12)
+                                    .background(Color.orange)
+                                    .cornerRadius(8)
+                            }
+                        }
+                        
+                        // 起床確認完了のために立ち上がることを促すヒント表示
+                        if alarmService.isWaitingForWakeUp {
+                            Text("起きて立ってください")
+                                .font(.caption2)
+                                .foregroundColor(.green)
+                        } else {
+                            // 完全停止ボタン（UI上の表記を「停止」から「強制停止」に変更）
+                            Button(action: {
+                                alarmService.completelyStopAlarm()
+                            }) {
+                                Text("強制停止")
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                                    .padding(.vertical, 8)
+                                    .padding(.horizontal, 12)
+                                    .background(Color.red)
+                                    .cornerRadius(8)
+                            }
+                        }
+                    }
+                    
+                    // スヌーズボタン
                     if settingsManager.alarmSettings.snoozeEnabled {
                         Button(action: {
                             alarmService.snoozeAlarm()
@@ -73,23 +144,10 @@ struct WatchMainView: View {
                                 .foregroundColor(.white)
                                 .padding(.vertical, 8)
                                 .padding(.horizontal, 12)
-                                .background(Color.orange)
+                                .background(Color.purple)
                                 .cornerRadius(8)
                         }
-                    }
-                    
-                    // 二度寝監視状態の表示
-                    if motionService.isMonitoring {
-                        Text(motionService.sleepState.isLyingDown ? "二度寝検知中" : "姿勢監視中")
-                            .font(.caption2)
-                            .foregroundColor(motionService.sleepState.isLyingDown ? .red : .green)
-                    }
-                    
-                    // 振動状態の表示（デバッグ用）
-                    if alarmService.isVibrating {
-                        Text(alarmService.isPaused ? "振動一時停止中" : "振動中")
-                            .font(.caption2)
-                            .foregroundColor(alarmService.isPaused ? .orange : .blue)
+                        .padding(.top, 8)
                     }
                 }
                 
