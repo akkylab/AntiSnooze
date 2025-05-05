@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>NSMotionUsageDescription</key>
+	<string>二度寝検知のためにデバイスの動きを監視します</string>
 	<key>NSHealthUpdateUsageDescription</key>
 	<string>バックグラウンド実行のためにHealthKitを使用します</string>
 	<key>NSHealthShareUsageDescription</key>
@@ -10,11 +12,6 @@
 	<array>
 		<string>alarm</string>
 		<string>workout-processing</string>
-	</array>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>audio</string>
-		<string>processing</string>
 	</array>
 </dict>
 </plist>
