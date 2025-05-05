@@ -1,4 +1,4 @@
-// AntiSnoozeWatch Watch App/Views/MainView.swift
+// AntiSnoozeWatch Watch App/Views/WatchMainView.swift
 import SwiftUI
 import UserNotifications
 import WatchKit
@@ -101,5 +101,5 @@ struct WatchMainView: View {
 }
 
 #Preview {
-    MainView()
+    WatchMainView() // MainView() ではなく WatchMainView() を使用
 }
