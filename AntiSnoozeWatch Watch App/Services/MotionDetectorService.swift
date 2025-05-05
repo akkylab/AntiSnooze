@@ -1,4 +1,5 @@
-// AntiSnoozeWatch Watch App/Services/MotionDetectorService.swift
+// MotionDetectorService.swift の変更
+
 import Foundation
 import CoreMotion
 import WatchKit
@@ -21,11 +22,26 @@ class MotionDetectorService: NSObject, ObservableObject {
     // バックグラウンド実行のための参照
     private let backgroundManager = BackgroundModeManager.shared
     
-    // 検知パラメータ
+    // 検知パラメータ - 閾値を分けることでヒステリシスを導入
+    private let lyingDownAngleThreshold: Double = 100.0  // 横になりの閾値を高くする（元: 70.0）
+    private let standUpAngleThreshold: Double = 60.0     // 起き上がりの閾値は低くする（新規）
     private let significantMotionThreshold: Double = 0.3
-    private let lyingDownAngleThreshold: Double = 70.0
     private let motionCheckInterval: TimeInterval = 1.0
     private let dozeOffDuration: TimeInterval = 180.0
+    
+    // 状態変化の持続時間判定用
+    private var potentialStateChangeTime: Date?
+    private let requiredStateChangeDuration: TimeInterval = 2.0 // 状態変化確定までの秒数
+    
+    // 連続動き検出用
+    private var significantMotionCount: Int = 0
+    private let motionCountThresholdForWakeUp: Int = 3
+    private var lastMotionTime: Date = Date()
+    private let motionResetInterval: TimeInterval = 5.0
+    
+    // フィルタリング用
+    private var filteredTiltAngle: Double = 90.0
+    private let angleFilterFactor: Double = 0.3 // フィルタリング係数
     
     private var motionCheckTimer: Timer?
     private var dozeOffTimer: Timer?
@@ -73,7 +89,7 @@ class MotionDetectorService: NSObject, ObservableObject {
         }
     }
     
-    // 加速度データを処理
+    // 加速度データを処理 - 改善版
     private func processAccelerometerData(_ data: CMAccelerometerData) {
         // X, Y, Z軸の加速度を取得
         let x = data.acceleration.x
@@ -90,7 +106,31 @@ class MotionDetectorService: NSObject, ObservableObject {
         if sleepState.motionLevel > significantMotionThreshold {
             sleepState.lastSignificantMotionTime = Date()
             
-            // 継続的な動きがあれば「起床」と判断できる
+            // 継続的な動きのカウント処理を追加
+            let now = Date()
+            if now.timeIntervalSince(lastMotionTime) < motionResetInterval {
+                // 短時間内の連続動きと判断
+                significantMotionCount += 1
+                print("連続動き検出: \(significantMotionCount)回目")
+                
+                // 連続動きが閾値を超えた場合、起床状態と判断
+                if significantMotionCount >= motionCountThresholdForWakeUp && sleepState.isLyingDown {
+                    print("連続動きにより起床と判断: \(significantMotionCount)回の動きを検出")
+                    sleepState.isLyingDown = false
+                    
+                    // アラームサービスに通知
+                    if AlarmService.shared.isWaitingForWakeUp {
+                        print("連続動きによる起床検知完了")
+                        AlarmService.shared.wakeUpDetected()
+                    }
+                }
+            } else {
+                // 時間が空いていたらリセット
+                significantMotionCount = 1
+            }
+            lastMotionTime = now
+            
+            // ログ出力
             if sleepState.isLyingDown {
                 print("有意な動きを検出: \(sleepState.motionLevel)")
                 
@@ -102,40 +142,78 @@ class MotionDetectorService: NSObject, ObservableObject {
         }
         
         // 重力ベクトルとの角度を計算（デバイスの傾き検出）
-        let tiltAngle = atan2(sqrt(x*x + y*y), z) * 180.0 / .pi
+        let rawTiltAngle = atan2(sqrt(x*x + y*y), z) * 180.0 / .pi
         
-        // 体の向きを判断（傾き角度が閾値以上で「横になっている」と判断）
+        // ローパスフィルタでノイズを低減（移動平均フィルタ）
+        filteredTiltAngle = (filteredTiltAngle * (1 - angleFilterFactor)) + (rawTiltAngle * angleFilterFactor)
+        
+        // 体の向きを判断（ヒステリシスを導入）
         let wasLyingDown = sleepState.isLyingDown
-        sleepState.isLyingDown = tiltAngle > lyingDownAngleThreshold
         
-        // 状態変化を検出
-        if sleepState.isLyingDown != wasLyingDown {
-            if sleepState.isLyingDown {
-                print("横になりました: 角度 \(tiltAngle)°")
-                // 横になった場合、二度寝タイマーを開始
-                startDozeOffTimer()
-                
-                // 起き上がり検知モードが有効な場合、リセット
-                if uprightDetectionActive {
-                    resetUprightDetection()
-                }
-            } else {
-                print("起き上がりました: 角度 \(tiltAngle)°")
-                // 起き上がった場合、二度寝タイマーを停止
-                stopDozeOffTimer()
-                
-                // アラームサービスが起床待ち状態の場合、起床をより早く検知
-                if AlarmService.shared.isWaitingForWakeUp {
-                    print("起床待ち中に起き上がりを検出: 起床確認を開始")
-                    startUprightDetection()
-                }
-            }
+        // 状態変化の判定（ヒステリシス付き）
+        if wasLyingDown && filteredTiltAngle < standUpAngleThreshold {
+            // 横になっている状態から起き上がりの可能性
+            handlePotentialStateChange(to: false, angle: filteredTiltAngle)
+        } else if !wasLyingDown && filteredTiltAngle > lyingDownAngleThreshold {
+            // 起き上がっている状態から横になりの可能性
+            handlePotentialStateChange(to: true, angle: filteredTiltAngle)
+        } else {
+            // 状態変化の可能性がなくなった場合はリセット
+            potentialStateChangeTime = nil
         }
         
         // 起き上がり検知モードが有効で、起き上がっている場合
         if uprightDetectionActive && !sleepState.isLyingDown {
             // 連続して起き上がっている時間を増加
             incrementUprightTime()
+        }
+    }
+    
+    // 状態変化の持続時間を確認するメソッド（新規追加）
+    private func handlePotentialStateChange(to newLyingState: Bool, angle: Double) {
+        let now = Date()
+        
+        // 状態変化の開始時間を記録
+        if potentialStateChangeTime == nil {
+            potentialStateChangeTime = now
+            return
+        }
+        
+        // 状態変化が一定時間続いたか確認
+        if let changeStartTime = potentialStateChangeTime,
+           now.timeIntervalSince(changeStartTime) >= requiredStateChangeDuration {
+            
+            // 状態を変更
+            if sleepState.isLyingDown != newLyingState {
+                sleepState.isLyingDown = newLyingState
+                
+                if newLyingState {
+                    print("横になりました: 角度 \(angle)° (フィルタ適用済み)")
+                    // 横になった場合、二度寝タイマーを開始
+                    startDozeOffTimer()
+                    
+                    // 起き上がり検知モードが有効な場合、リセット
+                    if uprightDetectionActive {
+                        resetUprightDetection()
+                    }
+                } else {
+                    print("起き上がりました: 角度 \(angle)° (フィルタ適用済み)")
+                    // 起き上がった場合、二度寝タイマーを停止
+                    stopDozeOffTimer()
+                    
+                    // 動き検出カウントをリセット（起き上がりを確認したため）
+                    significantMotionCount = 0
+                    
+                    // アラームサービスが起床待ち状態の場合、起床をより早く検知
+                    if AlarmService.shared.isWaitingForWakeUp {
+                        print("起床待ち中に起き上がりを検出: 起床確認を開始")
+                        startUprightDetection()
+                    }
+                }
+            }
+            
+            // 状態変更後にタイマーをリセット
+            potentialStateChangeTime = nil
         }
     }
     
