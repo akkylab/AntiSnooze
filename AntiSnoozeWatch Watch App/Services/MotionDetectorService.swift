@@ -131,9 +131,17 @@ class MotionDetectorService: NSObject, ObservableObject {
     
     // セッションを必要に応じて延長
     private func extendRuntimeSessionIfNeeded() {
-        if let session = extendedSession, session.state != .running {
-            // セッションが実行中でなければ新しいセッションを開始
-            startExtendedRuntimeSession()
+        if extendedSession == nil || extendedSession?.state != .running {
+            // 既存のセッションをクリーンアップ
+            if let oldSession = extendedSession {
+                oldSession.invalidate()
+            }
+            extendedSession = nil
+            
+            // 少し遅延させてから新しいセッションを開始（状態の衝突を避ける）
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.startExtendedRuntimeSession()
+            }
         }
     }
 }
@@ -157,10 +165,20 @@ extension MotionDetectorService: WKExtendedRuntimeSessionDelegate {
             print("MotionDetectorService: エラー - \(error.localizedDescription)")
         }
         
-        // 無効になったが監視を続ける必要がある場合は再開
+        // セッション参照をクリア
+        if self.extendedSession === extendedRuntimeSession {
+            self.extendedSession = nil
+        }
+        
+        // バックグラウンド監視が必要な場合はワークアウトセッションを検討
         if isMonitoring {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                self.startExtendedRuntimeSession()
+            // 指数バックオフ戦略（時間をおいて再試行）
+            var retryDelay: TimeInterval = 2.0
+            DispatchQueue.main.asyncAfter(deadline: .now() + retryDelay) {
+                retryDelay = min(retryDelay * 2, 60.0) // 最大60秒まで増加
+                if self.isMonitoring {
+                    self.startExtendedRuntimeSession()
+                }
             }
         }
     }
