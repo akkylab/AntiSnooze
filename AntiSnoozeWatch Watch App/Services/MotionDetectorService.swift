@@ -1,3 +1,4 @@
+// AntiSnoozeWatch Watch App/Services/MotionDetectorService.swift
 import Foundation
 import CoreMotion
 import WatchKit
@@ -7,6 +8,7 @@ class MotionDetectorService: NSObject, ObservableObject {
     
     private let motionManager = CMMotionManager()
     private var extendedSession: WKExtendedRuntimeSession?
+    private var isExtendedSessionActive = false // セッション状態管理用
     
     @Published var sleepState = SleepState()
     @Published var isMonitoring = false
@@ -15,10 +17,10 @@ class MotionDetectorService: NSObject, ObservableObject {
     private let backgroundManager = BackgroundModeManager.shared
     
     // 検知パラメータ
-    private let significantMotionThreshold: Double = 0.3 // 有意な動きと判断する閾値
-    private let lyingDownAngleThreshold: Double = 70.0  // 横になっていると判断する角度閾値
-    private let motionCheckInterval: TimeInterval = 1.0 // モーションチェックの間隔（秒）
-    private let dozeOffDuration: TimeInterval = 180.0   // 二度寝と判断する継続時間（秒）
+    private let significantMotionThreshold: Double = 0.3
+    private let lyingDownAngleThreshold: Double = 70.0
+    private let motionCheckInterval: TimeInterval = 1.0
+    private let dozeOffDuration: TimeInterval = 180.0
     
     private var motionCheckTimer: Timer?
     private var dozeOffTimer: Timer?
@@ -39,7 +41,7 @@ class MotionDetectorService: NSObject, ObservableObject {
         backgroundManager.shouldMonitor = true
         backgroundManager.startBackgroundMode()
         
-        // 拡張ランタイムセッションを開始
+        // 拡張ランタイムセッションを開始（既に実行中なら開始しない）
         startExtendedRuntimeSession()
         
         // 加速度センサーが利用可能か確認
@@ -159,6 +161,11 @@ class MotionDetectorService: NSObject, ObservableObject {
             // デバイスを起こす（省電力モードでもセンサーデータを取得するため）
             self.wakeUpDevice()
             
+            // ランタイムセッションが終了していたら再開（定期チェック）
+            if !self.isExtendedSessionActive {
+                self.startExtendedRuntimeSession()
+            }
+            
             // 念のため状態をiPhoneに送信
             WatchConnectivityManager.shared.sendSleepState(self.sleepState)
         }
@@ -172,16 +179,21 @@ class MotionDetectorService: NSObject, ObservableObject {
         }
     }
     
-    // 拡張ランタイムセッションを開始
+    // 拡張ランタイムセッションを開始（修正版）
     private func startExtendedRuntimeSession() {
-        // 既存のセッションを終了
+        // 既に実行中なら新しいセッションを開始しない
+        if isExtendedSessionActive { return }
+        
+        // 既存のセッションを終了（念のため）
         extendedSession?.invalidate()
+        extendedSession = nil
         
         // 新しいセッションを作成
         let session = WKExtendedRuntimeSession()
         session.delegate = self
         session.start()
         extendedSession = session
+        isExtendedSessionActive = true
         
         print("拡張ランタイムセッション開始")
     }
@@ -206,6 +218,7 @@ class MotionDetectorService: NSObject, ObservableObject {
         // 拡張ランタイムセッションを無効化
         extendedSession?.invalidate()
         extendedSession = nil
+        isExtendedSessionActive = false
     }
 }
 
@@ -213,6 +226,7 @@ class MotionDetectorService: NSObject, ObservableObject {
 extension MotionDetectorService: WKExtendedRuntimeSessionDelegate {
     func extendedRuntimeSession(_ extendedRuntimeSession: WKExtendedRuntimeSession, didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason, error: Error?) {
         print("拡張ランタイムセッション終了: \(reason.rawValue)")
+        isExtendedSessionActive = false
         
         // エラーが発生した場合は、しばらく待ってから再開を試みる
         if error != nil && isMonitoring {
@@ -224,16 +238,13 @@ extension MotionDetectorService: WKExtendedRuntimeSessionDelegate {
     
     func extendedRuntimeSessionDidStart(_ extendedRuntimeSession: WKExtendedRuntimeSession) {
         print("拡張ランタイムセッション開始成功")
+        isExtendedSessionActive = true
     }
     
     func extendedRuntimeSessionWillExpire(_ extendedRuntimeSession: WKExtendedRuntimeSession) {
         print("拡張ランタイムセッション期限切れ間近")
         
-        // セッション更新を試みる
-        if isMonitoring {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                self?.startExtendedRuntimeSession()
-            }
-        }
+        // セッション更新の準備をする（フラグを変更）
+        isExtendedSessionActive = false
     }
 }
