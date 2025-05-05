@@ -122,10 +122,4 @@ struct AlarmHistory: Codable, Identifiable {
         self.snoozeCount = snoozeCount
         self.dozeOffCount = dozeOffCount
     }
-}//
-//  Model.swift
-//  AntiSnooze
-//
-//  Created by 西峯弘晃 on 2025/05/05.
-//
-
+}
