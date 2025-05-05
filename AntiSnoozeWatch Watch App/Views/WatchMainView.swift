@@ -8,6 +8,7 @@ struct WatchMainView: View {
     @ObservedObject private var settingsManager = SettingsManager.shared
     @ObservedObject private var motionService = MotionDetectorService.shared
     @State private var showingSettings = false
+    @State private var showingTimeSetting = false // 時間設定画面表示用のフラグを追加
     
     var body: some View {
         ScrollView {
@@ -31,13 +32,23 @@ struct WatchMainView: View {
                     }
                     .padding(.horizontal, 6)
                 
-                // 時刻設定
-                DatePicker("", selection: $settingsManager.alarmSettings.wakeUpTime, displayedComponents: .hourAndMinute)
-                    .labelsHidden()
-                    .onChange(of: settingsManager.alarmSettings.wakeUpTime) {
-                        alarmService.updateFromSettings()
+                // 時間設定ボタン - DatePickerをボタンに置き換え
+                Button(action: {
+                    showingTimeSetting = true
+                }) {
+                    HStack {
+                        Image(systemName: "clock")
+                        Text("アラーム時間を設定")
+                            .font(.caption)
                     }
-                    .frame(height: 100)
+                    .padding()
+                    .background(Color.blue.opacity(0.3))
+                    .cornerRadius(10)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .sheet(isPresented: $showingTimeSetting) {
+                    TimeSettingView(isPresented: $showingTimeSetting)
+                }
                 
                 if alarmService.isAlarmActive {
                     // アラーム起動中の表示と操作ボタン
