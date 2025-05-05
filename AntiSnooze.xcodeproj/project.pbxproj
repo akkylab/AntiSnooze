@@ -69,6 +69,9 @@
 		DA0723142DC883B6004E50C8 /* AntiSnoozeWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "AntiSnoozeWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		DA0723202DC883B7004E50C8 /* AntiSnoozeWatch Watch AppTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "AntiSnoozeWatch Watch AppTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		DA07232A2DC883B7004E50C8 /* AntiSnoozeWatch Watch AppUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "AntiSnoozeWatch Watch AppUITests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
+		DA0723402DC88D1A004E50C8 /* Model.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Model.swift; sourceTree = "<group>"; };
+		DA0723412DC88D57004E50C8 /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityManager.swift; sourceTree = "<group>"; };
+		DA0723422DC88D73004E50C8 /* SettingsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -153,6 +156,7 @@
 		DA0722DC2DC880A0004E50C8 = {
 			isa = PBXGroup;
 			children = (
+				DA07233F2DC88CF8004E50C8 /* Shared */,
 				DA0722E72DC880A0004E50C8 /* AntiSnooze */,
 				DA0722F62DC880A1004E50C8 /* AntiSnoozeTests */,
 				DA0723002DC880A1004E50C8 /* AntiSnoozeUITests */,
@@ -174,6 +178,16 @@
 				DA07232A2DC883B7004E50C8 /* AntiSnoozeWatch Watch AppUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		DA07233F2DC88CF8004E50C8 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				DA0723422DC88D73004E50C8 /* SettingsManager.swift */,
+				DA0723412DC88D57004E50C8 /* WatchConnectivityManager.swift */,
+				DA0723402DC88D1A004E50C8 /* Model.swift */,
+			);
+			path = Shared;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
