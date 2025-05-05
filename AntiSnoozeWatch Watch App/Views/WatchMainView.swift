@@ -6,21 +6,22 @@ import WatchKit
 struct WatchMainView: View {
     @ObservedObject private var alarmService = AlarmService.shared
     @ObservedObject private var settingsManager = SettingsManager.shared
+    @ObservedObject private var motionService = MotionDetectorService.shared
     @State private var showingSettings = false
     
     var body: some View {
         ScrollView {
-            VStack(spacing: 10) { // 間隔を15から10に縮小
+            VStack(spacing: 10) {
                 // 次のアラーム表示
                 if let nextAlarm = alarmService.nextAlarmDate {
                     Text("次のアラーム")
-                        .font(.footnote) // headlineからfootnoteへ変更
+                        .font(.footnote)
                     
                     Text(formatTime(nextAlarm))
-                        .font(.system(size: 28, weight: .bold)) // サイズを36から28に縮小
+                        .font(.system(size: 28, weight: .bold))
                 } else {
                     Text("アラーム未設定")
-                        .font(.footnote) // headlineからfootnoteへ変更
+                        .font(.footnote)
                 }
                 
                 // アラームのON/OFF切り替え
@@ -28,7 +29,7 @@ struct WatchMainView: View {
                     .onChange(of: settingsManager.alarmSettings.isActive) { _, _ in
                         alarmService.updateFromSettings()
                     }
-                    .padding(.horizontal, 6) // 水平方向のパディングを追加して幅を調整
+                    .padding(.horizontal, 6)
                 
                 // 時刻設定
                 DatePicker("", selection: $settingsManager.alarmSettings.wakeUpTime, displayedComponents: .hourAndMinute)
@@ -36,7 +37,7 @@ struct WatchMainView: View {
                     .onChange(of: settingsManager.alarmSettings.wakeUpTime) {
                         alarmService.updateFromSettings()
                     }
-                    .frame(height: 100) // 高さを固定して適切なサイズに
+                    .frame(height: 100)
                 
                 if alarmService.isAlarmActive {
                     // アラーム起動中の表示と操作ボタン
@@ -44,12 +45,12 @@ struct WatchMainView: View {
                         alarmService.stopAlarm()
                     }) {
                         Text("停止")
-                            .font(.caption) // headline から caption へ変更
+                            .font(.caption)
                             .foregroundColor(.white)
-                            .padding(.vertical, 8) // 垂直方向のパディングを調整
-                            .padding(.horizontal, 15) // 水平方向のパディングを調整
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 15)
                             .background(Color.red)
-                            .cornerRadius(8) // 角丸を10から8に縮小
+                            .cornerRadius(8)
                     }
                     
                     if settingsManager.alarmSettings.snoozeEnabled {
@@ -57,31 +58,45 @@ struct WatchMainView: View {
                             alarmService.snoozeAlarm()
                         }) {
                             Text("スヌーズ")
-                                .font(.caption) // headline から caption へ変更
+                                .font(.caption)
                                 .foregroundColor(.white)
-                                .padding(.vertical, 8) // 垂直方向のパディングを調整
-                                .padding(.horizontal, 12) // 水平方向のパディングを調整
+                                .padding(.vertical, 8)
+                                .padding(.horizontal, 12)
                                 .background(Color.orange)
-                                .cornerRadius(8) // 角丸を10から8に縮小
+                                .cornerRadius(8)
                         }
+                    }
+                    
+                    // 二度寝監視状態の表示
+                    if motionService.isMonitoring {
+                        Text(motionService.sleepState.isLyingDown ? "二度寝検知中" : "姿勢監視中")
+                            .font(.caption2)
+                            .foregroundColor(motionService.sleepState.isLyingDown ? .red : .green)
+                    }
+                    
+                    // 振動状態の表示（デバッグ用）
+                    if alarmService.isVibrating {
+                        Text(alarmService.isPaused ? "振動一時停止中" : "振動中")
+                            .font(.caption2)
+                            .foregroundColor(alarmService.isPaused ? .orange : .blue)
                     }
                 }
                 
-                Spacer().frame(height: 10) // スペーサーの高さを調整
+                Spacer().frame(height: 10)
                 
                 // 詳細設定ボタン
                 Button(action: {
                     showingSettings = true
                 }) {
                     Text("詳細設定")
-                        .font(.caption2) // footnoteからcaption2へ変更
+                        .font(.caption2)
                 }
                 .sheet(isPresented: $showingSettings) {
                     AlarmSettingView()
                 }
             }
-            .padding(.horizontal, 8) // 水平方向のパディングを調整
-            .padding(.vertical, 6) // 垂直方向のパディングを調整
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
         }
         .navigationTitle("AntiSnooze")
         .onAppear {

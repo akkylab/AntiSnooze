@@ -89,6 +89,13 @@
 			);
 			target = DA0723132DC883B6004E50C8 /* AntiSnoozeWatch Watch App */;
 		};
+		DA0723802DC8EFF5004E50C8 /* Exceptions for "AntiSnoozeWatch Watch App" folder in "AntiSnoozeWatch Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"AntiSnoozeWatch-Watch-App-Info.plist",
+			);
+			target = DA0723132DC883B6004E50C8 /* AntiSnoozeWatch Watch App */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -112,6 +119,9 @@
 		};
 		DA0723152DC883B6004E50C8 /* AntiSnoozeWatch Watch App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DA0723802DC8EFF5004E50C8 /* Exceptions for "AntiSnoozeWatch Watch App" folder in "AntiSnoozeWatch Watch App" target */,
+			);
 			path = "AntiSnoozeWatch Watch App";
 			sourceTree = "<group>";
 		};
@@ -828,6 +838,7 @@
 				DEVELOPMENT_TEAM = 574V5TDPPU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "AntiSnoozeWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = AntiSnoozeWatch;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.akkylab.AntiSnooze;
@@ -857,6 +868,7 @@
 				DEVELOPMENT_TEAM = 574V5TDPPU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "AntiSnoozeWatch-Watch-App-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = AntiSnoozeWatch;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.akkylab.AntiSnooze;
