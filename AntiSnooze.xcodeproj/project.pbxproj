@@ -8,6 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		DA0723342DC883B7004E50C8 /* AntiSnoozeWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = DA0723142DC883B6004E50C8 /* AntiSnoozeWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		DA07235D2DC89B4E004E50C8 /* SettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0723422DC88D73004E50C8 /* SettingsManager.swift */; };
+		DA07235E2DC89B4E004E50C8 /* SettingsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0723422DC88D73004E50C8 /* SettingsManager.swift */; };
+		DA07235F2DC89BDA004E50C8 /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0723412DC88D57004E50C8 /* WatchConnectivityManager.swift */; };
+		DA0723602DC89BDA004E50C8 /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0723412DC88D57004E50C8 /* WatchConnectivityManager.swift */; };
+		DA0723612DC89BE3004E50C8 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0723402DC88D1A004E50C8 /* Model.swift */; };
+		DA0723622DC89BE3004E50C8 /* Model.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA0723402DC88D1A004E50C8 /* Model.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -74,9 +80,23 @@
 		DA0723422DC88D73004E50C8 /* SettingsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		DA0723642DC89BF4004E50C8 /* Exceptions for "AntiSnooze" folder in "AntiSnoozeWatch Watch App" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Views/AlarmSettingView.swift,
+				Views/MainView.swift,
+			);
+			target = DA0723132DC883B6004E50C8 /* AntiSnoozeWatch Watch App */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		DA0722E72DC880A0004E50C8 /* AntiSnooze */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				DA0723642DC89BF4004E50C8 /* Exceptions for "AntiSnooze" folder in "AntiSnoozeWatch Watch App" target */,
+			);
 			path = AntiSnooze;
 			sourceTree = "<group>";
 		};
@@ -439,6 +459,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DA0723612DC89BE3004E50C8 /* Model.swift in Sources */,
+				DA07235D2DC89B4E004E50C8 /* SettingsManager.swift in Sources */,
+				DA07235F2DC89BDA004E50C8 /* WatchConnectivityManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -460,6 +483,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DA0723622DC89BE3004E50C8 /* Model.swift in Sources */,
+				DA0723602DC89BDA004E50C8 /* WatchConnectivityManager.swift in Sources */,
+				DA07235E2DC89B4E004E50C8 /* SettingsManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

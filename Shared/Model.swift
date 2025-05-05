@@ -40,7 +40,7 @@ struct AlarmSettings: Codable, Identifiable, Equatable {
         let now = Date()
         
         // 今日の同じ時刻を設定
-        var components = calendar.dateComponents([.hour, .minute], from: wakeUpTime)
+        let components = calendar.dateComponents([.hour, .minute], from: wakeUpTime)
         var todayAlarmDate = calendar.date(bySettingHour: components.hour ?? 0,
                                           minute: components.minute ?? 0,
                                           second: 0, of: now)!

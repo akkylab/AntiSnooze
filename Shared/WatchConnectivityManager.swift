@@ -198,10 +198,4 @@ extension WatchConnectivityManager: WCSessionDelegate {
             }
         }
     }
-}//
-//  WatchConnectivityManager.swift
-//  AntiSnooze
-//
-//  Created by 西峯弘晃 on 2025/05/05.
-//
-
+}
