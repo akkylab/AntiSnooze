@@ -14,6 +14,10 @@ class AlarmService: ObservableObject {
     @Published var isVibrating = false
     @Published var isPaused = false
     
+    // おめでとう画面管理のための変数を追加
+    @Published var showCongratulations = false
+    @Published var congratulationsWakeUpTime: Date?
+    
     private var timer: Timer?
     private var vibrationTimer: Timer?
     private var vibrationPauseTimer: Timer?
@@ -144,7 +148,7 @@ class AlarmService: ObservableObject {
         }
     }
     
-    // 連続振動開始（temporaryPaused参照を削除）
+    // 連続振動開始
     func startContinuousVibration() {
         print("連続振動を開始")
         guard !isVibrating else { return }
@@ -216,7 +220,7 @@ class AlarmService: ObservableObject {
         WKInterfaceDevice.current().play(hapticType)
     }
     
-    // 振動停止（temporaryPaused参照を削除）
+    // 振動停止
     func stopVibration() {
         print("振動を停止")
         isVibrating = false
@@ -228,17 +232,24 @@ class AlarmService: ObservableObject {
         vibrationPauseTimer = nil
     }
     
-    // 完全停止
+    // 完全停止 - おめでとう画面表示のトリガーを追加
     func completelyStopAlarm() {
         print("アラームを完全停止")
         stopVibration()
         isAlarmActive = false
         
+        // 現在の時刻を保存（起床時間として）
+        let currentDate = Date()
+        
         // モーション検知を停止
         MotionDetectorService.shared.stopMonitoring()
         
         // 履歴を更新
-        SettingsManager.shared.updateLastAlarmHistory(wakeUpTime: Date())
+        SettingsManager.shared.updateLastAlarmHistory(wakeUpTime: currentDate)
+        
+        // おめでとう画面表示のトリガー
+        congratulationsWakeUpTime = currentDate
+        showCongratulations = true
         
         // 次回アラームをスケジュール
         updateFromSettings()

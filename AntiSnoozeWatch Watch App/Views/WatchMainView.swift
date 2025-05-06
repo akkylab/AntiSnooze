@@ -2,6 +2,7 @@
 import SwiftUI
 import UserNotifications
 import WatchKit
+import Combine
 
 struct WatchMainView: View {
     @ObservedObject private var alarmService = AlarmService.shared
@@ -9,6 +10,8 @@ struct WatchMainView: View {
     @ObservedObject private var motionService = MotionDetectorService.shared
     @State private var showingSettings = false
     @State private var showingTimeSetting = false
+    @State private var showingCongratulations = false
+    @State private var cancellables = Set<AnyCancellable>()
     
     var body: some View {
         ScrollView {
@@ -53,7 +56,7 @@ struct WatchMainView: View {
                 if alarmService.isAlarmActive {
                     // アラーム起動中の表示
                     
-                    // 姿勢と歩行状態の表示 (修正)
+                    // 姿勢と歩行状態の表示
                     if motionService.isMonitoring {
                         VStack(spacing: 4) {
                             // 通常の姿勢検知表示
@@ -127,6 +130,27 @@ struct WatchMainView: View {
             
             // AlarmServiceを初期化して更新
             alarmService.updateFromSettings()
+            
+            // AlarmServiceのおめでとう画面状態を監視
+            alarmService.$showCongratulations
+                .sink { show in  // weak self を削除
+                    if show {
+                        showingCongratulations = true
+                        // AlarmServiceのフラグをリセット
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                            alarmService.showCongratulations = false
+                        }
+                    }
+                }
+                .store(in: &cancellables)
+        }
+        .sheet(isPresented: $showingCongratulations) {
+            if let wakeUpTime = alarmService.congratulationsWakeUpTime {
+                CongratulationsView(
+                    isPresented: $showingCongratulations,
+                    wakeUpTime: wakeUpTime
+                )
+            }
         }
     }
     
