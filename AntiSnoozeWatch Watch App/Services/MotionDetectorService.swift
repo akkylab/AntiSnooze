@@ -12,7 +12,7 @@ class MotionDetectorService: NSObject, ObservableObject {
     private var extendedSession: WKExtendedRuntimeSession?
     private var isExtendedSessionActive = false // セッション状態管理用
     
-    @Published var sleepState = SleepState()
+    @Published var sleepState = SleepState(isLyingDown: true)
     @Published var isMonitoring = false
     
     // バックグラウンド実行のための参照
