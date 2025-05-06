@@ -1,9 +1,9 @@
-// AntiSnoozeWatch Watch App/Services/AlarmService.swift の変更
+// AntiSnoozeWatch Watch App/Services/AlarmService.swift
 import Foundation
 import UserNotifications
 import SwiftUI
 import WatchKit
-import Combine // Combine追加
+import Combine
 
 class AlarmService: ObservableObject {
     static let shared = AlarmService()
@@ -14,22 +14,13 @@ class AlarmService: ObservableObject {
     @Published var isVibrating = false
     @Published var isPaused = false
     
-    // 起床検知関連の変数を追加
-    @Published var isWaitingForWakeUp = false  // 起床待ち状態かどうか
-    @Published var temporaryPaused = false     // 一時停止状態かどうか
-    
     private var timer: Timer?
     private var vibrationTimer: Timer?
     private var vibrationPauseTimer: Timer?
-    private var wakeUpDetectionTimer: Timer?   // 起床検知タイマー
-    
-    // 各種取り消し可能なサブスクリプション
-    private var sleepStateSubscription: AnyCancellable?
     
     // 振動の設定
     private let vibrationInterval: TimeInterval = 2.0
     private let continuousVibrationDuration: TimeInterval = 60.0
-    private let temporaryPauseDuration: TimeInterval = 15.0  // 一時停止の最大時間（秒）
     
     private init() {
         print("AlarmService 初期化中...")
@@ -44,73 +35,9 @@ class AlarmService: ObservableObject {
         
         // 保存された設定を読み込み
         updateFromSettings()
-        
-        // MotionDetectorServiceの状態を監視
-        subscribeSleepState()
     }
     
-    // モーション検知サービスのSleepStateを購読
-    private func subscribeSleepState() {
-        sleepStateSubscription = MotionDetectorService.shared.$sleepState
-            .receive(on: RunLoop.main)
-            .sink { [weak self] state in
-                guard let self = self else { return }
-                
-                // 一時停止中で、かつ起床待ち状態の場合
-                if self.temporaryPaused && self.isWaitingForWakeUp {
-                    // 横になっていない（=起床している）と判断
-                    if !state.isLyingDown {
-                        print("起床検知: ユーザーが起き上がりました")
-                        // 指定秒数以上起き上がっていたらアラームを完全停止
-                        self.confirmWakeUp()
-                    }
-                }
-            }
-    }
-    
-    // 起床検知完了を受け取るメソッド
-    func wakeUpDetected() {
-        guard isWaitingForWakeUp else { return }
-        
-        print("起床検知完了: アラームを完全停止します")
-        completelyStopAlarm()
-    }
-    
-    // 起床確認処理を開始
-    private func startWakeUpDetection() {
-        print("起床検知開始")
-        isWaitingForWakeUp = true
-        
-        // タイマーをリセット
-        wakeUpDetectionTimer?.invalidate()
-        
-        // 既にユーザーが起き上がっている場合は即時カウント開始
-        if !MotionDetectorService.shared.sleepState.isLyingDown {
-            confirmWakeUp()
-        }
-    }
-    
-    // 指定秒数以上起き上がっている状態を確認
-    private func confirmWakeUp() {
-        // 5秒間起き上がったままかを確認するタイマー
-        let wakeUpConfirmationDuration: TimeInterval = 5.0
-        
-        wakeUpDetectionTimer = Timer.scheduledTimer(withTimeInterval: wakeUpConfirmationDuration, repeats: false) { [weak self] _ in
-            guard let self = self else { return }
-            
-            // 最終確認 - まだ起き上がっているか
-            if !MotionDetectorService.shared.sleepState.isLyingDown {
-                print("起床確認完了: アラームを完全停止します")
-                self.completelyStopAlarm()
-            } else {
-                print("起床確認失敗: まだ横になっています")
-                // 一時停止を解除し、振動を再開
-                self.resumeFromTemporaryPause()
-            }
-        }
-    }
-    
-    // 更新メソッドは変更なし
+    // 更新メソッド
     func updateFromSettings() {
         let settings = SettingsManager.shared.alarmSettings
         isAlarmActive = settings.isActive
@@ -121,7 +48,7 @@ class AlarmService: ObservableObject {
         scheduleAlarm()
     }
     
-    // アラームスケジュールは変更なし
+    // アラームスケジュール
     func scheduleAlarm() {
         cancelAlarm()
         
@@ -143,7 +70,7 @@ class AlarmService: ObservableObject {
         }
     }
     
-    // 通知スケジュールは変更なし
+    // 通知スケジュール
     private func scheduleNotification(for date: Date) {
         let content = UNMutableNotificationContent()
         content.title = "AntiSnooze"
@@ -165,7 +92,7 @@ class AlarmService: ObservableObject {
         }
     }
     
-    // アラームキャンセルは変更なし
+    // アラームキャンセル
     func cancelAlarm() {
         timer?.invalidate()
         timer = nil
@@ -175,7 +102,7 @@ class AlarmService: ObservableObject {
         print("アラームをキャンセルしました")
     }
     
-    // アラーム実行は変更なし
+    // アラーム実行
     func fireAlarm() {
         DispatchQueue.main.async {
             print("アラームを実行しています！")
@@ -190,7 +117,7 @@ class AlarmService: ObservableObject {
         }
     }
     
-    // 振動実行は変更なし
+    // 振動実行
     func executeVibration(intensity: VibrationIntensity) {
         print("振動を実行: \(intensity.name)")
         
@@ -217,7 +144,7 @@ class AlarmService: ObservableObject {
         }
     }
     
-    // 連続振動開始は変更なし
+    // 連続振動開始（temporaryPaused参照を削除）
     func startContinuousVibration() {
         print("連続振動を開始")
         guard !isVibrating else { return }
@@ -230,10 +157,9 @@ class AlarmService: ObservableObject {
         let hapticType = getHapticType(for: SettingsManager.shared.alarmSettings.vibrationIntensity)
         
         vibrationTimer = Timer.scheduledTimer(withTimeInterval: vibrationInterval, repeats: true) { [weak self] _ in
-            guard let self = self, self.isVibrating, !self.isPaused, !self.temporaryPaused else { return }
+            guard let self = self, self.isVibrating, !self.isPaused else { return }
             
             WKInterfaceDevice.current().play(hapticType)
-            
             WKInterfaceDevice.current().play(.start)
         }
         
@@ -254,7 +180,7 @@ class AlarmService: ObservableObject {
         }
     }
     
-    // 振動タイプ取得は変更なし
+    // 振動タイプ取得
     private func getHapticType(for intensity: VibrationIntensity) -> WKHapticType {
         switch intensity {
         case .light:
@@ -266,7 +192,7 @@ class AlarmService: ObservableObject {
         }
     }
     
-    // 振動一時停止は変更なし
+    // 振動一時停止
     func pauseVibration() {
         print("振動を一時停止")
         isPaused = true
@@ -277,7 +203,7 @@ class AlarmService: ObservableObject {
         }
     }
     
-    // 振動再開は変更なし
+    // 振動再開
     func resumeVibration() {
         guard isVibrating, isPaused else { return }
         
@@ -290,66 +216,19 @@ class AlarmService: ObservableObject {
         WKInterfaceDevice.current().play(hapticType)
     }
     
-    // 振動停止は変更なし
+    // 振動停止（temporaryPaused参照を削除）
     func stopVibration() {
         print("振動を停止")
         isVibrating = false
         isPaused = false
-        temporaryPaused = false
-        isWaitingForWakeUp = false
         
         vibrationTimer?.invalidate()
         vibrationTimer = nil
         vibrationPauseTimer?.invalidate()
         vibrationPauseTimer = nil
-        wakeUpDetectionTimer?.invalidate()
-        wakeUpDetectionTimer = nil
     }
     
-    // アラーム一時停止 - 新機能
-    func temporaryPauseAlarm() {
-        print("アラームを一時停止します (最大\(temporaryPauseDuration)秒)")
-        temporaryPaused = true
-        
-        // 起床検知を開始
-        startWakeUpDetection()
-        
-        // 一定時間後に自動的に振動を再開するタイマー
-        DispatchQueue.main.asyncAfter(deadline: .now() + temporaryPauseDuration) { [weak self] in
-            guard let self = self, self.temporaryPaused else { return }
-            
-            // まだ起床検知できていない場合は再開
-            self.resumeFromTemporaryPause()
-        }
-    }
-    
-    // 一時停止から再開 - 新機能
-    func resumeFromTemporaryPause() {
-        guard temporaryPaused else { return }
-        
-        print("一時停止から振動を再開します")
-        temporaryPaused = false
-        isWaitingForWakeUp = false
-        
-        // タイマーをクリア
-        wakeUpDetectionTimer?.invalidate()
-        wakeUpDetectionTimer = nil
-        
-        // 横になっていると判断されている場合、振動を再開
-        if MotionDetectorService.shared.sleepState.isLyingDown {
-            // 振動を再開
-            isPaused = false
-            
-            // 振動タイプを取得して即時に振動
-            let hapticType = getHapticType(for: SettingsManager.shared.alarmSettings.vibrationIntensity)
-            WKInterfaceDevice.current().play(hapticType)
-        } else {
-            // 既に起き上がっている場合は完全停止
-            completelyStopAlarm()
-        }
-    }
-    
-    // 完全停止 - 新機能（従来のstopAlarmを改名）
+    // 完全停止
     func completelyStopAlarm() {
         print("アラームを完全停止")
         stopVibration()

@@ -3,7 +3,7 @@
 import Foundation
 import CoreMotion
 import WatchKit
-import Combine // Combine追加
+import Combine
 
 class MotionDetectorService: NSObject, ObservableObject {
     static let shared = MotionDetectorService()
@@ -14,10 +14,6 @@ class MotionDetectorService: NSObject, ObservableObject {
     
     @Published var sleepState = SleepState()
     @Published var isMonitoring = false
-    
-    // 起床検知関連の変数
-    @Published var consecutiveUprightTime: TimeInterval = 0 // 連続して起き上がっている時間
-    @Published var uprightDetectionActive = false // 起き上がり検知モードがアクティブか
     
     // バックグラウンド実行のための参照
     private let backgroundManager = BackgroundModeManager.shared
@@ -43,14 +39,13 @@ class MotionDetectorService: NSObject, ObservableObject {
     private var filteredTiltAngle: Double = 90.0
     private let angleFilterFactor: Double = 0.3 // フィルタリング係数
     
-    // 状態変更のクールダウン用（修正点1: クールダウン変数追加）
+    // 状態変更のクールダウン用
     private var lastStateChangeTime: Date = Date()
     private var stateChangeCooldownActive = false
     private let stateChangeCooldownDuration: TimeInterval = 10.0 // 状態変化後のクールダウン時間（秒）
     
     private var motionCheckTimer: Timer?
     private var dozeOffTimer: Timer?
-    private var uprightDetectionTimer: Timer? // 起き上がり検知タイマー
     
     override init() {
         super.init()
@@ -125,7 +120,6 @@ class MotionDetectorService: NSObject, ObservableObject {
                 print("連続動き検出: \(significantMotionCount)回目")
                 
                 // 連続動きが閾値を超えた場合、起床状態に設定し、一定時間この状態を維持
-                // 修正点2: 連続動き検出時の処理を強化
                 if significantMotionCount >= motionCountThresholdForWakeUp {
                     if sleepState.isLyingDown {
                         print("連続動きにより起床と判断: \(significantMotionCount)回の動きを検出")
@@ -133,13 +127,7 @@ class MotionDetectorService: NSObject, ObservableObject {
                         lastStateChangeTime = now // 状態変化時刻を記録
                         stateChangeCooldownActive = true // クールダウン開始
                         
-                        // 起床完了通知
-                        NotificationCenter.default.post(
-                            name: NSNotification.Name("WakeUpDetected"),
-                            object: nil
-                        )
-                        
-                        // 状態に関わらず、アラームを停止する（修正点）
+                        // 状態に関わらず、アラームを停止する
                         print("連続動きによる起床検知完了 - アラームを停止します")
                         AlarmService.shared.completelyStopAlarm()
                     }
@@ -153,15 +141,10 @@ class MotionDetectorService: NSObject, ObservableObject {
             // ログ出力
             if sleepState.isLyingDown {
                 print("有意な動きを検出: \(sleepState.motionLevel)")
-                
-                // アラームサービスが起床待ち状態の場合、動きを通知
-                if AlarmService.shared.isWaitingForWakeUp {
-                    print("起床待ち中に動きを検出")
-                }
             }
         }
         
-        // 修正点3: 状態変更のクールダウン処理
+        // 状態変更のクールダウン処理
         if stateChangeCooldownActive {
             let elapsedTimeSinceChange = Date().timeIntervalSince(lastStateChangeTime)
             if elapsedTimeSinceChange >= stateChangeCooldownDuration {
@@ -170,7 +153,6 @@ class MotionDetectorService: NSObject, ObservableObject {
                 print("状態変化クールダウン終了")
             } else {
                 // クールダウン中は角度による状態変化を無視
-                // 修正点4: デバッグログを追加
                 if !sleepState.isLyingDown {
                     print("クールダウン中のため角度による状態変化無視: 経過=\(elapsedTimeSinceChange)秒, 角度=\(filteredTiltAngle)°")
                 }
@@ -178,7 +160,7 @@ class MotionDetectorService: NSObject, ObservableObject {
             }
         }
         
-        // 修正点5: 角度による状態変化の処理（クールダウン中は実行されない）
+        // 角度による状態変化の処理（クールダウン中は実行されない）
         let wasLyingDown = sleepState.isLyingDown
         
         // 状態変化の判定（ヒステリシス付き）
@@ -194,22 +176,16 @@ class MotionDetectorService: NSObject, ObservableObject {
             // 状態変化の可能性がなくなった場合はリセット
             potentialStateChangeTime = nil
         }
-        
-        // 起き上がり検知モードが有効で、起き上がっている場合
-        if uprightDetectionActive && !sleepState.isLyingDown {
-            // 連続して起き上がっている時間を増加
-            incrementUprightTime()
-        }
     }
     
     // 状態変化の持続時間を確認するメソッド
     private func handlePotentialStateChange(to newLyingState: Bool, angle: Double) {
         let now = Date()
         
-        // 修正点6: デバッグログを追加
+        // デバッグログを追加
         print("状態変化検討中: 現在=\(sleepState.isLyingDown ? "横" : "起床"), 角度=\(angle)°, 動き=\(sleepState.motionLevel), 最後の動き=\(Date().timeIntervalSince(sleepState.lastSignificantMotionTime))秒前")
         
-        // 修正点7: 複合判定の導入
+        // 複合判定の導入
         // 最近の動きがあるか
         let recentMotionExists = Date().timeIntervalSince(sleepState.lastSignificantMotionTime) < 3.0
         
@@ -225,7 +201,7 @@ class MotionDetectorService: NSObject, ObservableObject {
             
             // 状態を変更
             if sleepState.isLyingDown != newLyingState {
-                // 修正点8: 状態変更前に追加チェック
+                // 状態変更前に追加チェック
                 // 起き上がりの場合、最近の動きがあることも条件に
                 if !newLyingState && !recentMotionExists {
                     print("起き上がり条件不足: 最近の動きがありません")
@@ -248,11 +224,6 @@ class MotionDetectorService: NSObject, ObservableObject {
                     print("横になりました: 角度 \(angle)° (フィルタ適用済み)")
                     // 横になった場合、二度寝タイマーを開始
                     startDozeOffTimer()
-                    
-                    // 起き上がり検知モードが有効な場合、リセット
-                    if uprightDetectionActive {
-                        resetUprightDetection()
-                    }
                 } else {
                     print("起き上がりました: 角度 \(angle)° (フィルタ適用済み)")
                     // 起き上がった場合、二度寝タイマーを停止
@@ -261,7 +232,7 @@ class MotionDetectorService: NSObject, ObservableObject {
                     // 動き検出カウントをリセット（起き上がりを確認したため）
                     significantMotionCount = 0
                     
-                    // アラームを完全に停止（修正点を追加）
+                    // アラームを完全に停止
                     print("角度検知による起床確認 - アラームを停止します")
                     AlarmService.shared.completelyStopAlarm()
                 }
@@ -270,61 +241,6 @@ class MotionDetectorService: NSObject, ObservableObject {
             // 状態変更後にタイマーをリセット
             potentialStateChangeTime = nil
         }
-    }
-    
-    // 起き上がり検知を開始
-    private func startUprightDetection() {
-        uprightDetectionActive = true
-        consecutiveUprightTime = 0
-        
-        // 既存のタイマーをクリア
-        uprightDetectionTimer?.invalidate()
-        
-        // 1秒ごとに確認するタイマーを設定
-        uprightDetectionTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            
-            // 起き上がっていない場合はリセット
-            if self.sleepState.isLyingDown {
-                self.resetUprightDetection()
-            } else {
-                // 5秒以上起き上がっていたら起床完了と判断
-                if self.consecutiveUprightTime >= 5.0 {
-                    print("起床完了を検知: \(self.consecutiveUprightTime)秒間起き上がっています")
-                    
-                    // 起床完了通知
-                    NotificationCenter.default.post(
-                        name: NSNotification.Name("WakeUpDetected"),
-                        object: nil
-                    )
-                    
-                    // アラームを完全に停止（修正点）
-                    print("連続時間による起床検知完了 - アラームを停止します")
-                    AlarmService.shared.completelyStopAlarm()
-                    
-                    // 検知完了
-                    self.stopUprightDetection()
-                }
-            }
-        }
-    }
-    
-    // 起き上がり検知をリセット
-    private func resetUprightDetection() {
-        consecutiveUprightTime = 0
-    }
-    
-    // 起き上がり検知を停止
-    private func stopUprightDetection() {
-        uprightDetectionActive = false
-        consecutiveUprightTime = 0
-        uprightDetectionTimer?.invalidate()
-        uprightDetectionTimer = nil
-    }
-    
-    // 起き上がり時間を増加
-    private func incrementUprightTime() {
-        consecutiveUprightTime += 1.0
     }
     
     // 二度寝タイマーを開始
@@ -442,7 +358,6 @@ class MotionDetectorService: NSObject, ObservableObject {
         motionCheckTimer?.invalidate()
         motionCheckTimer = nil
         stopDozeOffTimer()
-        stopUprightDetection()  // 起き上がり検知も停止
         
         // BackgroundModeManagerの状態を更新
         backgroundManager.shouldMonitor = false
