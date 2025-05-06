@@ -1,5 +1,4 @@
-// MotionDetectorService.swift の変更
-
+// MotionDetectorService.swift
 import Foundation
 import CoreMotion
 import WatchKit
@@ -9,6 +8,7 @@ class MotionDetectorService: NSObject, ObservableObject {
     static let shared = MotionDetectorService()
     
     private let motionManager = CMMotionManager()
+    private let pedometer = CMPedometer() // 歩数計を追加
     private var extendedSession: WKExtendedRuntimeSession?
     private var isExtendedSessionActive = false // セッション状態管理用
     
@@ -24,6 +24,10 @@ class MotionDetectorService: NSObject, ObservableObject {
     private let significantMotionThreshold: Double = 0.3
     private let motionCheckInterval: TimeInterval = 1.0
     private let dozeOffDuration: TimeInterval = 180.0
+    
+    // 歩行検知のパラメータ
+    private let requiredStepsForWakeUp = 8 // 起床と判断するために必要な歩数
+    private let stepTimeWindow: TimeInterval = 10.0 // 歩数をカウントする時間枠（秒）
     
     // 状態変化の持続時間判定用
     private var potentialStateChangeTime: Date?
@@ -46,6 +50,7 @@ class MotionDetectorService: NSObject, ObservableObject {
     
     private var motionCheckTimer: Timer?
     private var dozeOffTimer: Timer?
+    private var pedometerUpdateTimer: Timer? // 歩数計タイマーを追加
     
     override init() {
         super.init()
@@ -86,6 +91,76 @@ class MotionDetectorService: NSObject, ObservableObject {
             setupMotionCheckTimer()
         } else {
             print("加速度センサーが利用できません")
+        }
+        
+        // 歩行検知を開始 (追加)
+        startPedometerUpdates()
+    }
+    
+    // 歩行検知を開始するメソッド (追加)
+    private func startPedometerUpdates() {
+        // ペドメーターが利用可能か確認
+        if CMPedometer.isStepCountingAvailable() {
+            print("歩行検知を開始しました")
+            
+            // 歩行データの定期的な取得を開始
+            pedometerUpdateTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+                self?.queryRecentSteps()
+            }
+            
+            // 最初の呼び出し
+            queryRecentSteps()
+        } else {
+            print("このデバイスでは歩行検知を利用できません")
+        }
+    }
+    
+    // 最近の歩数を取得するメソッド (追加)
+    private func queryRecentSteps() {
+        // 最近のstepTimeWindow秒間の歩数を取得
+        let now = Date()
+        let fromDate = now.addingTimeInterval(-stepTimeWindow)
+        
+        pedometer.queryPedometerData(from: fromDate, to: now) { [weak self] data, error in
+            guard let self = self, let data = data, error == nil else {
+                if let error = error {
+                    print("歩行データ取得エラー: \(error.localizedDescription)")
+                }
+                return
+            }
+            
+            // メインスレッドで処理
+            DispatchQueue.main.async {
+                // 歩数を取得
+                let steps = data.numberOfSteps.intValue
+                
+                // 歩行状態を更新
+                let wasWalking = self.sleepState.isWalking
+                let isWalking = steps > 0
+                
+                self.sleepState.stepCount = steps
+                self.sleepState.isWalking = isWalking
+                
+                if isWalking {
+                    self.sleepState.lastStepTime = now
+                    
+                    if steps >= self.requiredStepsForWakeUp && self.sleepState.isLyingDown {
+                        print("歩行検知による起床判定: \(steps)歩検出")
+                        self.sleepState.isLyingDown = false
+                        self.lastStateChangeTime = now
+                        self.stateChangeCooldownActive = true
+                        
+                        // アラームを停止
+                        print("歩行による起床検知完了 - アラームを停止します")
+                        AlarmService.shared.completelyStopAlarm()
+                    }
+                }
+                
+                // 状態変化のログ出力
+                if wasWalking != isWalking {
+                    print("歩行状態変化: \(wasWalking) -> \(isWalking) (歩数: \(steps))")
+                }
+            }
         }
     }
     
@@ -358,6 +433,13 @@ class MotionDetectorService: NSObject, ObservableObject {
         motionCheckTimer?.invalidate()
         motionCheckTimer = nil
         stopDozeOffTimer()
+        
+        // 歩行検知も停止 (追加)
+        pedometerUpdateTimer?.invalidate()
+        pedometerUpdateTimer = nil
+        pedometer.stopUpdates()
+        
+        print("歩行検知を停止しました")
         
         // BackgroundModeManagerの状態を更新
         backgroundManager.shouldMonitor = false

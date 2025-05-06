@@ -53,13 +53,22 @@ struct WatchMainView: View {
                 if alarmService.isAlarmActive {
                     // アラーム起動中の表示
                     
-                    // 新UI: 起床状態表示
+                    // 姿勢と歩行状態の表示 (修正)
                     if motionService.isMonitoring {
-                        // 通常の姿勢検知表示
-                        Text(motionService.sleepState.isLyingDown ? "横になっています" : "起きています")
-                            .font(.caption)
-                            .foregroundColor(motionService.sleepState.isLyingDown ? .red : .green)
-                            .padding(.vertical, 4)
+                        VStack(spacing: 4) {
+                            // 通常の姿勢検知表示
+                            Text(motionService.sleepState.isLyingDown ? "横になっています" : "起きています")
+                                .font(.caption)
+                                .foregroundColor(motionService.sleepState.isLyingDown ? .red : .green)
+                            
+                            // 歩行状態の表示を追加
+                            if motionService.sleepState.isWalking {
+                                Text("歩行中: \(motionService.sleepState.stepCount)歩")
+                                    .font(.caption2)
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                        .padding(.vertical, 4)
                     }
                     
                     // 振動状態表示と停止ボタン

@@ -2,8 +2,6 @@
 //  Models.swift
 //  AntiSnooze
 //
-//  Created by 西峯弘晃 on 2025/05/05.
-//
 
 import Foundation
 
@@ -96,11 +94,18 @@ struct SleepState: Codable {
     var isLyingDown: Bool
     var motionLevel: Double
     var lastSignificantMotionTime: Date
+    var isWalking: Bool // 歩行状態
+    var stepCount: Int // 歩数カウント
+    var lastStepTime: Date // 最後に歩行を検出した時間
     
-    init(isLyingDown: Bool = false, motionLevel: Double = 0.0, lastSignificantMotionTime: Date = Date()) {
+    init(isLyingDown: Bool = false, motionLevel: Double = 0.0, lastSignificantMotionTime: Date = Date(),
+         isWalking: Bool = false, stepCount: Int = 0, lastStepTime: Date = Date()) {
         self.isLyingDown = isLyingDown
         self.motionLevel = motionLevel
         self.lastSignificantMotionTime = lastSignificantMotionTime
+        self.isWalking = isWalking
+        self.stepCount = stepCount
+        self.lastStepTime = lastStepTime
     }
 }
 
