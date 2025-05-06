@@ -51,7 +51,7 @@ struct WatchMainView: View {
                 }
                 
                 if alarmService.isAlarmActive {
-                    // アラーム起動中の表示と操作ボタン
+                    // アラーム起動中の表示
                     
                     // 新UI: 起床状態表示
                     if motionService.isMonitoring {
@@ -62,33 +62,31 @@ struct WatchMainView: View {
                             .padding(.vertical, 4)
                     }
                     
-                    // 振動状態表示
+                    // 振動状態表示と停止ボタン
                     if alarmService.isVibrating {
-                        HStack {
-                            Image(systemName: "waveform.circle.fill")
-                                .foregroundColor(.blue)
+                        VStack(spacing: 8) {
+                            HStack {
+                                Image(systemName: "waveform.circle.fill")
+                                    .foregroundColor(.blue)
+                                
+                                Text("振動中")
+                                    .font(.caption2)
+                                    .foregroundColor(.blue)
+                            }
                             
-                            Text("振動中")
-                                .font(.caption2)
-                                .foregroundColor(.blue)
-                        }
-                        .padding(.bottom, 8)
-                    }
-                    
-                    // 操作ボタン: 停止ボタンのみに変更
-                    HStack(spacing: 12) {
-                        // 停止ボタン（単一ボタンとしてレイアウトを調整）
-                        Button(action: {
-                            alarmService.completelyStopAlarm()
-                        }) {
-                            Text("停止")
-                                .font(.caption)
-                                .foregroundColor(.white)
-                                .padding(.vertical, 8)
-                                .padding(.horizontal, 12)
-                                .background(Color.red)
-                                .cornerRadius(8)
-                                .frame(maxWidth: .infinity) // 幅を調整
+                            // 停止ボタン - 振動中の時だけ表示
+                            Button(action: {
+                                alarmService.completelyStopAlarm()
+                            }) {
+                                Text("停止")
+                                    .font(.caption)
+                                    .foregroundColor(.white)
+                                    .padding(.vertical, 8)
+                                    .padding(.horizontal, 12)
+                                    .background(Color.red)
+                                    .cornerRadius(8)
+                                    .frame(maxWidth: .infinity)
+                            }
                         }
                     }
                 }
