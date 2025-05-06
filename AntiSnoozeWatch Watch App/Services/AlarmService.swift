@@ -371,31 +371,11 @@ class AlarmService: ObservableObject {
         completelyStopAlarm()
     }
     
-    // スヌーズアラームは変更なし
+    // スヌーズ機能を削除し、代わりに非推奨警告をつける
+    @available(*, deprecated, message: "Snooze functionality is removed from AntiSnooze")
     func snoozeAlarm() {
-        print("スヌーズ機能実行")
-        stopVibration()
-        
-        // モーション検知を停止
-        MotionDetectorService.shared.stopMonitoring()
-        
-        let settings = SettingsManager.shared.alarmSettings
-        guard settings.snoozeEnabled else {
-            // スヌーズが無効なら、アラームを停止
-            completelyStopAlarm()
-            return
-        }
-        
-        // スヌーズ時間後にアラームを再開
-        let snoozeDate = Date().addingTimeInterval(Double(settings.snoozeInterval * 60))
-        nextAlarmDate = snoozeDate
-        
-        // タイマーを設定
-        timer = Timer.scheduledTimer(withTimeInterval: Double(settings.snoozeInterval * 60), repeats: false) { [weak self] _ in
-            self?.fireAlarm()
-        }
-        
-        // スヌーズカウント増加
-        SettingsManager.shared.updateLastAlarmHistory(incrementSnoozeCount: true)
+        print("スヌーズ機能は削除されました")
+        // 代わりに完全停止を実行
+        completelyStopAlarm()
     }
 }

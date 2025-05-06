@@ -76,14 +76,10 @@ class SettingsManager: ObservableObject {
     }
     
     // 既存の履歴を更新（二度寝カウント増加など）
-    func updateLastAlarmHistory(wakeUpTime: Date? = nil, incrementSnoozeCount: Bool = false, incrementDozeOffCount: Bool = false) {
+    func updateLastAlarmHistory(wakeUpTime: Date? = nil, incrementDozeOffCount: Bool = false) {
         if var lastHistory = alarmHistories.last {
             if let wakeUpTime = wakeUpTime {
                 lastHistory.wakeUpTime = wakeUpTime
-            }
-            
-            if incrementSnoozeCount {
-                lastHistory.snoozeCount += 1
             }
             
             if incrementDozeOffCount {

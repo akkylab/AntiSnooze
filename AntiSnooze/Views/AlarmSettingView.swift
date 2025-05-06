@@ -27,16 +27,7 @@ struct AlarmSettingView: View {
                 #endif
             }
             
-            // スヌーズ設定
-            Section(header: Text("スヌーズ設定")) {
-                Toggle("スヌーズを有効にする", isOn: $settingsManager.alarmSettings.snoozeEnabled)
-                
-                if settingsManager.alarmSettings.snoozeEnabled {
-                    Stepper(value: $settingsManager.alarmSettings.snoozeInterval, in: 1...30) {
-                        Text("スヌーズ間隔: \(settingsManager.alarmSettings.snoozeInterval)分")
-                    }
-                }
-            }
+            // 他の設定を追加する場合はここに記述
         }
         .navigationTitle("詳細設定")
     }

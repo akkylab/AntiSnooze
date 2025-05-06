@@ -12,18 +12,14 @@ struct AlarmSettings: Codable, Identifiable, Equatable {
     var id = UUID() // 一意の識別子を追加
     var wakeUpTime: Date
     var isActive: Bool
-    var snoozeEnabled: Bool
-    var snoozeInterval: Int // 分単位
     var vibrationIntensity: VibrationIntensity
     var repeatDays: [Bool] = Array(repeating: false, count: 7) // 曜日ごとの繰り返し設定 [日,月,火,水,木,金,土]
     
     // 初期値を持つイニシャライザ
-    init(wakeUpTime: Date = Date(), isActive: Bool = false, snoozeEnabled: Bool = true,
-         snoozeInterval: Int = 5, vibrationIntensity: VibrationIntensity = .medium) {
+    init(wakeUpTime: Date = Date(), isActive: Bool = false,
+         vibrationIntensity: VibrationIntensity = .medium) {
         self.wakeUpTime = wakeUpTime
         self.isActive = isActive
-        self.snoozeEnabled = snoozeEnabled
-        self.snoozeInterval = snoozeInterval
         self.vibrationIntensity = vibrationIntensity
     }
     
@@ -113,13 +109,11 @@ struct AlarmHistory: Codable, Identifiable {
     var id = UUID()
     var alarmTime: Date
     var wakeUpTime: Date?
-    var snoozeCount: Int
     var dozeOffCount: Int // 二度寝カウント
     
-    init(alarmTime: Date, wakeUpTime: Date? = nil, snoozeCount: Int = 0, dozeOffCount: Int = 0) {
+    init(alarmTime: Date, wakeUpTime: Date? = nil, dozeOffCount: Int = 0) {
         self.alarmTime = alarmTime
         self.wakeUpTime = wakeUpTime
-        self.snoozeCount = snoozeCount
         self.dozeOffCount = dozeOffCount
     }
 }

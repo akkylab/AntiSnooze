@@ -133,22 +133,6 @@ struct WatchMainView: View {
                             }
                         }
                     }
-                    
-                    // スヌーズボタン
-                    if settingsManager.alarmSettings.snoozeEnabled {
-                        Button(action: {
-                            alarmService.snoozeAlarm()
-                        }) {
-                            Text("スヌーズ")
-                                .font(.caption)
-                                .foregroundColor(.white)
-                                .padding(.vertical, 8)
-                                .padding(.horizontal, 12)
-                                .background(Color.purple)
-                                .cornerRadius(8)
-                        }
-                        .padding(.top, 8)
-                    }
                 }
                 
                 Spacer().frame(height: 10)
