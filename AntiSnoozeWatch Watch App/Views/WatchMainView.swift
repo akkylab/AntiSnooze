@@ -1,4 +1,5 @@
 // AntiSnoozeWatch Watch App/Views/WatchMainView.swift
+
 import SwiftUI
 import UserNotifications
 import WatchKit
@@ -13,9 +14,70 @@ struct WatchMainView: View {
     @State private var showingCongratulations = false
     @State private var cancellables = Set<AnyCancellable>()
     
+    // アニメーション用の状態変数を追加
+    @State private var animationProgress: Double = 0
+    @State private var isAnimating = false
+    
     var body: some View {
         ScrollView {
             VStack(spacing: 10) {
+                // 起床状態検知アニメーション - アラームが起動中かつ歩行中または起き上がり中の場合に表示
+                if alarmService.isAlarmActive && motionService.isMonitoring &&
+                   (!motionService.sleepState.isLyingDown || motionService.sleepState.isWalking) {
+                    
+                    // ウェイクアップ検知中の表示 - 最上部に配置
+                    VStack(spacing: 6) {
+                        Text("ウェイクアップ検知中")
+                            .font(.headline)
+                            .foregroundColor(.green)
+                            .padding(.top, 5)
+                        
+                        // 起きようとしている人のアニメーションアイコン
+                        ZStack {
+                            // 背景サークル
+                            Circle()
+                                .fill(Color.green.opacity(0.2))
+                                .frame(width: 70, height: 70)
+                                .scaleEffect(1.0 + sin(animationProgress * 3) * 0.1)
+                            
+                            // 人型アイコン
+                            Image(systemName: "figure.walk")
+                                .font(.system(size: 32))
+                                .foregroundColor(.green)
+                                .offset(y: sin(animationProgress * 6) * 5) // 上下の動き
+                        }
+                        .padding(.vertical, 5)
+                        
+                        // 歩数情報
+                        if motionService.sleepState.isWalking {
+                            Text("歩行検知: \(motionService.sleepState.stepCount)歩")
+                                .font(.footnote)
+                                .foregroundColor(.blue)
+                                .padding(.bottom, 5)
+                        }
+                    }
+                    .padding(10)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.green.opacity(0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.green, lineWidth: 1)
+                            )
+                    )
+                    .padding(.horizontal, 5)
+                    .onAppear {
+                        // アニメーション開始
+                        withAnimation(Animation.linear(duration: 2).repeatForever(autoreverses: false)) {
+                            animationProgress = 1.0
+                        }
+                        isAnimating = true
+                    }
+                    .onDisappear {
+                        isAnimating = false
+                    }
+                }
+                
                 // 次のアラーム表示
                 if let nextAlarm = alarmService.nextAlarmDate {
                     Text("次のアラーム")
@@ -56,22 +118,13 @@ struct WatchMainView: View {
                 if alarmService.isAlarmActive {
                     // アラーム起動中の表示
                     
-                    // 姿勢と歩行状態の表示
-                    if motionService.isMonitoring {
-                        VStack(spacing: 4) {
-                            // 通常の姿勢検知表示
-                            Text(motionService.sleepState.isLyingDown ? "横になっています" : "起きています")
-                                .font(.caption)
-                                .foregroundColor(motionService.sleepState.isLyingDown ? .red : .green)
-                            
-                            // 歩行状態の表示を追加
-                            if motionService.sleepState.isWalking {
-                                Text("歩行中: \(motionService.sleepState.stepCount)歩")
-                                    .font(.caption2)
-                                    .foregroundColor(.blue)
-                            }
-                        }
-                        .padding(.vertical, 4)
+                    // 姿勢状態の表示 - ウェイクアップ検知表示がないときのみ表示
+                    if motionService.isMonitoring &&
+                       !((!motionService.sleepState.isLyingDown || motionService.sleepState.isWalking)) {
+                        Text(motionService.sleepState.isLyingDown ? "横になっています" : "起きています")
+                            .font(.caption)
+                            .foregroundColor(motionService.sleepState.isLyingDown ? .red : .green)
+                            .padding(.vertical, 4)
                     }
                     
                     // 振動状態表示と停止ボタン
@@ -133,7 +186,7 @@ struct WatchMainView: View {
             
             // AlarmServiceのおめでとう画面状態を監視
             alarmService.$showCongratulations
-                .sink { show in  // weak self を削除
+                .sink { show in
                     if show {
                         showingCongratulations = true
                         // AlarmServiceのフラグをリセット

@@ -301,6 +301,7 @@ class MotionDetectorService: NSObject, ObservableObject {
                     startDozeOffTimer()
                 } else {
                     print("起き上がりました: 角度 \(angle)° (フィルタ適用済み)")
+                    print("ウェイクアップ検知開始")  // 追加
                     // 起き上がった場合、二度寝タイマーを停止
                     stopDozeOffTimer()
                     
