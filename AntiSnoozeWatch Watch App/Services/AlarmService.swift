@@ -105,8 +105,8 @@ class AlarmService: ObservableObject {
     
     // バックグラウンド実行のためのExtendedRuntimeSessionをスケジュール
     private func scheduleExtendedRuntimeSession(for date: Date) {
-        // アラーム時刻の5分前にセッション開始をスケジュール
-        let preAlarmTime = date.addingTimeInterval(-300)
+        // アラーム時刻の「直前」にセッション開始をスケジュール（5分前から1分前に変更）
+        let preAlarmTime = date.addingTimeInterval(-60) // 1分前に変更
         let now = Date()
         
         if preAlarmTime > now {
@@ -116,6 +116,7 @@ class AlarmService: ObservableObject {
             Timer.scheduledTimer(withTimeInterval: timeInterval, repeats: false) { [weak self] _ in
                 guard let self = self else { return }
                 print("アラーム前のExtendedRuntimeSessionを開始します")
+                // アラームの直前にのみモーション監視を開始
                 MotionDetectorService.shared.startMonitoring()
             }
         }
@@ -170,8 +171,8 @@ class AlarmService: ObservableObject {
     // アラーム状態チェック - このメソッドは一度だけ定義する
     func checkAlarmStatus() {
         let now = Date()
-        if let nextAlarm = nextAlarmDate, nextAlarm <= now && nextAlarm.addingTimeInterval(300) >= now {
-            // アラーム時刻が5分以内なら発動準備
+        if let nextAlarm = nextAlarmDate, nextAlarm <= now && nextAlarm.addingTimeInterval(60) >= now {
+            // アラーム時刻が1分以内なら発動準備（5分から1分に変更）
             print("アラーム時間が近いため、モニタリングを開始します")
             MotionDetectorService.shared.startMonitoring()
         }
@@ -194,8 +195,11 @@ class AlarmService: ObservableObject {
             print("アラームを実行しています！")
             self.isAlarmActive = true
             
+            // まず振動を実行
             self.executeVibration(intensity: SettingsManager.shared.alarmSettings.vibrationIntensity)
             
+            // アラーム発動時にモーション検知を開始
+            // この時点で初めて本格的な監視が始まる
             MotionDetectorService.shared.startMonitoring()
             
             let newHistory = AlarmHistory(alarmTime: Date())

@@ -32,9 +32,12 @@ class BackgroundModeManager: NSObject, ObservableObject {
         }
     }
     
-    // バックグラウンドモード開始
+    // バックグラウンドモード開始 - 最適化版
     func startBackgroundMode() {
-        guard !isActive, HKHealthStore.isHealthDataAvailable() else { return }
+        guard !isActive, HKHealthStore.isHealthDataAvailable(), shouldMonitor else { return }
+        
+        // 省電力のためのフラグを追加
+        let lowPowerMode = true
         
         let config = HKWorkoutConfiguration()
         config.activityType = .other
@@ -48,7 +51,7 @@ class BackgroundModeManager: NSObject, ObservableObject {
             session.startActivity(with: Date())
             
             isActive = true
-            print("バックグラウンドモード開始")
+            print("バックグラウンドモード開始 (省電力モード: \(lowPowerMode))")
         } catch {
             print("ワークアウトセッション作成エラー: \(error.localizedDescription)")
         }

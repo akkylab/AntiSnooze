@@ -22,7 +22,7 @@ class MotionDetectorService: NSObject, ObservableObject {
     private let lyingDownAngleThreshold: Double = 140.0  // 横になりの閾値をさらに高くする（元: 100.0）
     private let standUpAngleThreshold: Double = 80.0     // 起き上がりの閾値も高くする（元: 60.0）
     private let significantMotionThreshold: Double = 0.3
-    private let motionCheckInterval: TimeInterval = 1.0
+    private let motionCheckInterval: TimeInterval = 3.0  // 1.0から3.0に変更して省電力化
     private let dozeOffDuration: TimeInterval = 180.0
     
     // 歩行検知のパラメータ
@@ -58,54 +58,90 @@ class MotionDetectorService: NSObject, ObservableObject {
         print("MotionDetectorService: 初期化")
     }
     
-    // モーション監視を開始
+    // モーション監視を開始 - 省電力化のために最適化
     func startMonitoring() {
         guard !isMonitoring else { return }
         
         print("MotionDetectorService: 監視開始")
         isMonitoring = true
         
-        // BackgroundModeManagerの状態を更新
-        backgroundManager.shouldMonitor = true
-        backgroundManager.startBackgroundMode()
-        
-        // 拡張ランタイムセッションを開始（既に実行中なら開始しない）
-        startExtendedRuntimeSession()
-        
-        // 加速度センサーが利用可能か確認
-        if motionManager.isAccelerometerAvailable {
-            // センサーの更新間隔を設定
-            motionManager.accelerometerUpdateInterval = motionCheckInterval
+        // デバイスが横になっている場合のみバックグラウンドモードを開始
+        // これにより二度寝した場合にのみリソースを使用
+        if sleepState.isLyingDown {
+            backgroundManager.shouldMonitor = true
+            backgroundManager.startBackgroundMode()
             
-            // 加速度センサーを開始
-            motionManager.startAccelerometerUpdates(to: .main) { [weak self] data, error in
-                guard let self = self, let data = data, error == nil else {
-                    print("加速度センサーエラー: \(error?.localizedDescription ?? "不明")")
-                    return
+            // 拡張ランタイムセッションを開始
+            startExtendedRuntimeSession()
+            
+            if motionManager.isAccelerometerAvailable {
+                // センサーの更新間隔を長くして省電力化
+                motionManager.accelerometerUpdateInterval = 3.0 // 3秒ごとに変更
+                motionManager.startAccelerometerUpdates(to: .main) { [weak self] data, error in
+                    guard let self = self, let data = data, error == nil else {
+                        return
+                    }
+                    self.processAccelerometerData(data)
                 }
                 
-                // データを処理して体の向きを判断
-                self.processAccelerometerData(data)
+                setupMotionCheckTimer()
             }
             
-            // 定期的なチェックタイマーを設定
-            setupMotionCheckTimer()
+            // 歩行検知も省電力モードで開始
+            startPedometerUpdates()
         } else {
-            print("加速度センサーが利用できません")
+            // 既に起きている場合は軽量な監視のみ
+            setupLightweightMonitoring()
         }
-        
-        // 歩行検知を開始 (追加)
-        startPedometerUpdates()
     }
     
-    // 歩行検知を開始するメソッド (追加)
+    // 省電力モードの監視を追加
+    private func setupLightweightMonitoring() {
+        // 定期的なチェックの間隔を長くする
+        motionCheckTimer?.invalidate()
+        motionCheckTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            
+            // 横になったら完全なモニタリングを開始
+            if !self.sleepState.isLyingDown {
+                return
+            }
+            
+            // 横になったことを検知したら完全なモニタリングに切り替え
+            print("横になりを検知: 完全なモニタリングを開始")
+            self.stopLightweightMonitoring()
+            self.backgroundManager.shouldMonitor = true
+            self.backgroundManager.startBackgroundMode()
+            self.startExtendedRuntimeSession()
+            
+            // センサー監視を開始
+            if self.motionManager.isAccelerometerAvailable {
+                self.motionManager.accelerometerUpdateInterval = 3.0
+                self.motionManager.startAccelerometerUpdates(to: .main) { [weak self] data, error in
+                    guard let self = self, let data = data, error == nil else { return }
+                    self.processAccelerometerData(data)
+                }
+            }
+            
+            // 歩行検知を開始
+            self.startPedometerUpdates()
+        }
+    }
+    
+    // 軽量モニタリングを停止
+    private func stopLightweightMonitoring() {
+        motionCheckTimer?.invalidate()
+        motionCheckTimer = nil
+    }
+    
+    // 歩行検知を開始するメソッド - 省電力化
     private func startPedometerUpdates() {
         // ペドメーターが利用可能か確認
         if CMPedometer.isStepCountingAvailable() {
-            print("歩行検知を開始しました")
+            print("歩行検知を開始しました (省電力モード)")
             
-            // 歩行データの定期的な取得を開始
-            pedometerUpdateTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
+            // 更新間隔を5秒に延長して省電力化
+            pedometerUpdateTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
                 self?.queryRecentSteps()
             }
             
@@ -116,7 +152,7 @@ class MotionDetectorService: NSObject, ObservableObject {
         }
     }
     
-    // 最近の歩数を取得するメソッド (追加)
+    // 最近の歩数を取得するメソッド
     private func queryRecentSteps() {
         // 最近のstepTimeWindow秒間の歩数を取得
         let now = Date()
@@ -165,7 +201,7 @@ class MotionDetectorService: NSObject, ObservableObject {
         }
     }
     
-    // 加速度データを処理 - 改善版
+    // 加速度データを処理
     private func processAccelerometerData(_ data: CMAccelerometerData) {
         // X, Y, Z軸の加速度を取得
         let x = data.acceleration.x
@@ -284,10 +320,10 @@ class MotionDetectorService: NSObject, ObservableObject {
                     potentialStateChangeTime = nil
                     return
                 }
-                
-                // 横になりの場合は、厳しくチェック
+                                
+                // 横になった状態の場合は、厳しくチェック
                 if newLyingState && Date().timeIntervalSince(lastStateChangeTime) < stateChangeCooldownDuration/2 {
-                    print("横になり判定を無視: 前回の状態変化から\(Date().timeIntervalSince(lastStateChangeTime))秒")
+                    print("横になった状態の判定を無視: 前回の状態変化から\(Date().timeIntervalSince(lastStateChangeTime))秒")
                     potentialStateChangeTime = nil
                     return
                 }
@@ -344,13 +380,13 @@ class MotionDetectorService: NSObject, ObservableObject {
         dozeOffTimer = nil
     }
     
-    // 定期的なモーションチェックタイマーを設定
+    // 定期的なモーションチェックタイマーを設定 - 省電力化
     private func setupMotionCheckTimer() {
         // 既存のタイマーをキャンセル
         motionCheckTimer?.invalidate()
         
-        // 定期的に状態をチェックするタイマーを設定
-        motionCheckTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
+        // 定期的に状態をチェックするタイマーを設定（間隔を延長）
+        motionCheckTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
             
             // 現在時刻と最後の有意な動きの時間差を計算
@@ -453,7 +489,7 @@ class MotionDetectorService: NSObject, ObservableObject {
         sessionCheckTimer?.invalidate()
         sessionCheckTimer = nil
         
-        // 歩行検知も停止 (追加)
+        // 歩行検知も停止
         pedometerUpdateTimer?.invalidate()
         pedometerUpdateTimer = nil
         pedometer.stopUpdates()
