@@ -51,6 +51,7 @@ class MotionDetectorService: NSObject, ObservableObject {
     private var motionCheckTimer: Timer?
     private var dozeOffTimer: Timer?
     private var pedometerUpdateTimer: Timer? // 歩数計タイマーを追加
+    private var sessionCheckTimer: Timer? // セッションチェック用タイマー追加
     
     override init() {
         super.init()
@@ -407,6 +408,20 @@ class MotionDetectorService: NSObject, ObservableObject {
         } else {
             createAndStartNewSession()
         }
+        
+        // セッションタイムアウト対策のタイマーを追加
+        sessionCheckTimer?.invalidate()
+        sessionCheckTimer = Timer.scheduledTimer(withTimeInterval: 60, repeats: true) { [weak self] _ in
+            guard let self = self, self.isMonitoring else {
+                return
+            }
+            
+            // セッションが終了していれば再開
+            if !self.isExtendedSessionActive {
+                print("拡張ランタイムセッションを再開します")
+                self.createAndStartNewSession()
+            }
+        }
     }
 
     // 新しいセッションを作成して開始する補助メソッド
@@ -433,6 +448,10 @@ class MotionDetectorService: NSObject, ObservableObject {
         motionCheckTimer?.invalidate()
         motionCheckTimer = nil
         stopDozeOffTimer()
+        
+        // セッションチェックタイマーを停止
+        sessionCheckTimer?.invalidate()
+        sessionCheckTimer = nil
         
         // 歩行検知も停止 (追加)
         pedometerUpdateTimer?.invalidate()

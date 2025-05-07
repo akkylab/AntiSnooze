@@ -4,6 +4,8 @@ import UserNotifications
 import SwiftUI
 import WatchKit
 import Combine
+// 追加のフレームワークをインポート
+import ClockKit // WKAlarmManagerに関連するフレームワーク
 
 class AlarmService: ObservableObject {
     static let shared = AlarmService()
@@ -39,6 +41,12 @@ class AlarmService: ObservableObject {
         
         // 保存された設定を読み込み
         updateFromSettings()
+        
+        // アプリ起動時にフォアグラウンド通知を処理するためのオブザーバーを設定
+        NotificationCenter.default.addObserver(self,
+                                              selector: #selector(handleApplicationWillEnterForeground),
+                                              name: WKApplication.willEnterForegroundNotification,
+                                              object: nil)
     }
     
     // 更新メソッド
@@ -61,7 +69,14 @@ class AlarmService: ObservableObject {
             return
         }
         
+        // 通知のスケジュール
         scheduleNotification(for: nextDate)
+        
+        // システムアラームの設定
+        scheduleSystemAlarm()
+        
+        // WatchConnectivitySessionを有効化
+        WatchConnectivityManager.shared.ensureSessionIsActive()
         
         let timeInterval = nextDate.timeIntervalSinceNow
         if timeInterval > 0 {
@@ -74,12 +89,46 @@ class AlarmService: ObservableObject {
         }
     }
     
-    // 通知スケジュール
+    // システムアラームのスケジュール - WKAlarmManagerへの依存を削除
+    func scheduleSystemAlarm() {
+        guard isAlarmActive, let nextDate = nextAlarmDate else { return }
+        
+        // WKAlarmManagerはサポートされていないので、代替手段を使用
+        print("代替システムアラーム方式を使用します")
+        
+        // バックグラウンド実行をサポートするためのExtendedRuntimeSessionを使用
+        scheduleExtendedRuntimeSession(for: nextDate)
+        
+        // 通常の通知をスケジュール（冗長であっても確実にする）
+        scheduleNotification(for: nextDate)
+    }
+    
+    // バックグラウンド実行のためのExtendedRuntimeSessionをスケジュール
+    private func scheduleExtendedRuntimeSession(for date: Date) {
+        // アラーム時刻の5分前にセッション開始をスケジュール
+        let preAlarmTime = date.addingTimeInterval(-300)
+        let now = Date()
+        
+        if preAlarmTime > now {
+            let timeInterval = preAlarmTime.timeIntervalSinceNow
+            print("アラーム前のExtendedRuntimeSessionを \(timeInterval) 秒後にスケジュール")
+            
+            Timer.scheduledTimer(withTimeInterval: timeInterval, repeats: false) { [weak self] _ in
+                guard let self = self else { return }
+                print("アラーム前のExtendedRuntimeSessionを開始します")
+                MotionDetectorService.shared.startMonitoring()
+            }
+        }
+    }
+    
+    // 通知スケジュール（改善版）
     private func scheduleNotification(for date: Date) {
         let content = UNMutableNotificationContent()
         content.title = "AntiSnooze"
         content.body = "起床時間です！"
         content.sound = .default
+        // アプリ起動フラグを追加
+        content.categoryIdentifier = "ALARM_CATEGORY"
         
         let calendar = Calendar.current
         let components = calendar.dateComponents([.hour, .minute], from: date)
@@ -94,6 +143,38 @@ class AlarmService: ObservableObject {
                 print("通知をスケジュールしました: \(date)")
             }
         }
+        
+        // 通知アクション設定
+        let stopAction = UNNotificationAction(identifier: "STOP_ACTION",
+                                             title: "停止",
+                                             options: .foreground)
+        
+        let category = UNNotificationCategory(identifier: "ALARM_CATEGORY",
+                                             actions: [stopAction],
+                                             intentIdentifiers: [],
+                                             options: [])
+        
+        UNUserNotificationCenter.current().setNotificationCategories([category])
+    }
+    
+    // アプリがフォアグラウンドになった時の処理
+    @objc func handleApplicationWillEnterForeground() {
+        let now = Date()
+        if let nextAlarm = nextAlarmDate, nextAlarm <= now && nextAlarm.addingTimeInterval(60) >= now {
+            // アラーム時刻が今から1分以内なら発動
+            print("アプリがフォアグラウンドになり、アラーム時刻を検出しました")
+            fireAlarm()
+        }
+    }
+    
+    // アラーム状態チェック - このメソッドは一度だけ定義する
+    func checkAlarmStatus() {
+        let now = Date()
+        if let nextAlarm = nextAlarmDate, nextAlarm <= now && nextAlarm.addingTimeInterval(300) >= now {
+            // アラーム時刻が5分以内なら発動準備
+            print("アラーム時間が近いため、モニタリングを開始します")
+            MotionDetectorService.shared.startMonitoring()
+        }
     }
     
     // アラームキャンセル
@@ -103,6 +184,7 @@ class AlarmService: ObservableObject {
         stopVibration()
         
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["alarmNotification"])
+        
         print("アラームをキャンセルしました")
     }
     

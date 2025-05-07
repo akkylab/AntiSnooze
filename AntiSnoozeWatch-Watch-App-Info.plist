@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>WKRunsIndependentlyOfCompanionApp</key>
+	<true/>
 	<key>NSMotionUsageDescription</key>
 	<string>二度寝検知のためにデバイスの動きを監視します</string>
 	<key>NSHealthUpdateUsageDescription</key>

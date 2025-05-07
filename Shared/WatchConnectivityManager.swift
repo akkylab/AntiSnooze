@@ -155,6 +155,16 @@ class WatchConnectivityManager: NSObject, ObservableObject {
             print("Error encoding alarm action: \(error.localizedDescription)")
         }
     }
+    
+    // 確実な接続のために追加メソッド
+    func ensureSessionIsActive() {
+        if session.activationState != .activated {
+            session.activate()
+        }
+        
+        // 最新の設定を同期
+        sendAlarmSettings(SettingsManager.shared.alarmSettings)
+    }
 }
 
 // MARK: - WCSessionDelegate
