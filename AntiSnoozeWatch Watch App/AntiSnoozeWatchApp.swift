@@ -38,8 +38,16 @@ class AppDelegate: NSObject, WKApplicationDelegate, UNUserNotificationCenterDele
     func userNotificationCenter(_ center: UNUserNotificationCenter,
                               willPresent notification: UNNotification,
                               withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
-        // アプリ起動中でも通知を表示
-        completionHandler([.banner, .sound])
+        // アラームモードに応じて通知オプションを設定
+        var options: UNNotificationPresentationOptions = [.banner]
+        
+        // 音と振動モードの場合のみ音を追加
+        if SettingsManager.shared.alarmSettings.alarmMode == .soundAndVibration {
+            options.insert(.sound)
+        }
+        
+        // アプリ起動中でも通知を表示（設定されたオプションで）
+        completionHandler(options)
         
         // アラームを発動
         if notification.request.identifier == "alarmNotification" {
