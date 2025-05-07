@@ -78,7 +78,15 @@ class AppDelegate: NSObject, WKApplicationDelegate, UNUserNotificationCenterDele
         let content = UNMutableNotificationContent()
         content.title = "AntiSnooze"
         content.body = "起床時間です！"
-        content.sound = .default
+        
+        // アラームモードに応じて通知音を設定
+        if SettingsManager.shared.alarmSettings.alarmMode == .soundAndVibration {
+            content.sound = .default
+        } else {
+            // 振動のみの場合は音を無効化
+            content.sound = nil
+        }
+        
         content.categoryIdentifier = "ALARM_CATEGORY"
         
         // 通知トリガーを設定
