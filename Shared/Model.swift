@@ -5,20 +5,38 @@
 
 import Foundation
 
+// アラームモードの列挙型
+enum AlarmMode: Int, Codable, CaseIterable, Identifiable {
+    case vibrationOnly = 0
+    case soundAndVibration = 1
+    
+    var id: Int { self.rawValue }
+    
+    var name: String {
+        switch self {
+        case .vibrationOnly: return "振動のみ"
+        case .soundAndVibration: return "音と振動"
+        }
+    }
+}
+
 // アラーム設定データモデル
 struct AlarmSettings: Codable, Identifiable, Equatable {
     var id = UUID() // 一意の識別子を追加
     var wakeUpTime: Date
     var isActive: Bool
     var vibrationIntensity: VibrationIntensity
+    var alarmMode: AlarmMode // 追加：アラームモード
     var repeatDays: [Bool] = Array(repeating: false, count: 7) // 曜日ごとの繰り返し設定 [日,月,火,水,木,金,土]
     
     // 初期値を持つイニシャライザ
     init(wakeUpTime: Date = Date(), isActive: Bool = false,
-         vibrationIntensity: VibrationIntensity = .medium) {
+         vibrationIntensity: VibrationIntensity = .medium,
+         alarmMode: AlarmMode = .soundAndVibration) { // デフォルトは音と振動
         self.wakeUpTime = wakeUpTime
         self.isActive = isActive
         self.vibrationIntensity = vibrationIntensity
+        self.alarmMode = alarmMode
     }
     
     // 次の日のアラーム時刻を計算するメソッド

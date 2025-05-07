@@ -127,7 +127,15 @@ class AlarmService: ObservableObject {
         let content = UNMutableNotificationContent()
         content.title = "AntiSnooze"
         content.body = "起床時間です！"
-        content.sound = .default
+        
+        // アラームモードに応じて通知音を設定
+        if SettingsManager.shared.alarmSettings.alarmMode == .soundAndVibration {
+            content.sound = .default
+        } else {
+            // 振動のみの場合は音を無効化
+            content.sound = nil
+        }
+        
         // アプリ起動フラグを追加
         content.categoryIdentifier = "ALARM_CATEGORY"
         
@@ -183,6 +191,7 @@ class AlarmService: ObservableObject {
         timer?.invalidate()
         timer = nil
         stopVibration()
+        stopAlarmSound()
         
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ["alarmNotification"])
         
@@ -195,8 +204,16 @@ class AlarmService: ObservableObject {
             print("アラームを実行しています！")
             self.isAlarmActive = true
             
-            // まず振動を実行
+            // アラームモードに応じた実行
+            let alarmMode = SettingsManager.shared.alarmSettings.alarmMode
+            
+            // まず振動を実行（モードに関わらず常に振動）
             self.executeVibration(intensity: SettingsManager.shared.alarmSettings.vibrationIntensity)
+            
+            // サウンドが有効な場合は音も鳴らす
+            if alarmMode == .soundAndVibration {
+                self.playAlarmSound()
+            }
             
             // アラーム発動時にモーション検知を開始
             // この時点で初めて本格的な監視が始まる
@@ -205,6 +222,26 @@ class AlarmService: ObservableObject {
             let newHistory = AlarmHistory(alarmTime: Date())
             SettingsManager.shared.addAlarmHistory(newHistory)
         }
+    }
+    
+    // サウンド再生機能を追加
+    private func playAlarmSound() {
+        print("アラーム音を再生")
+        
+        #if os(watchOS)
+        // WatchOS側のサウンド再生
+        WKInterfaceDevice.current().play(.notification)
+        #else
+        // iOS側はシステムサウンドまたはAVAudioPlayerを使用
+        let notificationFeedbackGenerator = UINotificationFeedbackGenerator()
+        notificationFeedbackGenerator.notificationOccurred(.warning)
+        #endif
+    }
+    
+    // サウンド停止機能を追加
+    private func stopAlarmSound() {
+        print("アラーム音を停止")
+        // 実装はここでは省略（使用するオーディオシステムによる）
     }
     
     // 振動実行
@@ -322,6 +359,8 @@ class AlarmService: ObservableObject {
     func completelyStopAlarm() {
         print("アラームを完全停止")
         stopVibration()
+        // サウンドも停止
+        stopAlarmSound()
         isAlarmActive = false
         
         // 現在の時刻を保存（起床時間として）
