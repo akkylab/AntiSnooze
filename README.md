@@ -87,26 +87,26 @@ Due to watchOS background execution limits, the following methods are combined:
 ## Project Structure
 ```
 AntiSnooze/
-  ├─ Shared/              // iPhone・Watch共通コンポーネント
-  │   ├─ Model.swift           // データモデル
-  │   ├─ SettingsManager.swift  // 設定管理
-  │   └─ WatchConnectivityManager.swift // 通信管理
-  │
-  ├─ AntiSnooze/          // iPhone用アプリ
-  │   ├─ Views/                // 画面
-  │   │   ├─ MainView.swift         // メイン画面
-  │   │   └─ AlarmSettingView.swift // 設定画面
-  │   └─ ContentView.swift     // コンテンツビュー
-  │
-  └─ AntiSnoozeWatch Watch App/ // Watch用アプリ
-      ├─ Views/                // 画面
-      │   ├─ WatchMainView.swift    // メイン画面
-      │   ├─ TimeSettingView.swift  // 時間設定画面
-      │   └─ CongratulationsView.swift // お祝い画面
-      └─ Services/             // サービス
-          ├─ AlarmService.swift     // アラーム機能
-          ├─ MotionDetectorService.swift // モーション検知
-          └─ BackgroundModeManager.swift // バックグラウンド管理
+├─ Shared/
+│   ├─ Model.swift
+│   ├─ SettingsManager.swift
+│   └─ WatchConnectivityManager.swift
+│
+├─ AntiSnooze/
+│   ├─ Views/
+│   │   ├─ MainView.swift
+│   │   └─ AlarmSettingView.swift
+│   └─ ContentView.swift
+│
+└─ AntiSnoozeWatch Watch App/
+├─ Views/
+│   ├─ WatchMainView.swift
+│   ├─ TimeSettingView.swift
+│   └─ CongratulationsView.swift
+└─ Services/
+├─ AlarmService.swift
+├─ MotionDetectorService.swift
+└─ BackgroundModeManager.swift
 
 ```
 ## Developer Information
