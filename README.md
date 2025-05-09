@@ -135,10 +135,6 @@ AntiSnooze/
 - **Organization Identifier**: com.akkylab  
 - **Bundle Identifier**: com.akkylab.AntiSnooze
 
-## License
-
-This project is released under a proprietary license. See the `LICENSE` file for details.
-
 ## Contributing
 
 Please submit bug reports or feature requests via the GitHub issue tracker.  
@@ -276,10 +272,6 @@ AntiSnooze/
 
 - **Organization Identifier**: com.akkylab
 - **Bundle Identifier**: com.akkylab.AntiSnooze
-
-## ライセンス
-
-このプロジェクトは独自ライセンスの下で公開されています。詳細はLICENSEファイルをご覧ください。
 
 ## 貢献について
 
