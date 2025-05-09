@@ -1,3 +1,149 @@
+# AntiSnooze - Anti-Snooze Alarm App
+
+## Overview
+
+**AntiSnooze** (meaning "to counter snooze") is a specialized alarm app designed to help users wake up at a set time and prevent falling back asleep afterward. It utilizes the Apple Watch’s motion sensors to detect if the user lies back down and continues to alert through haptic feedback.
+
+## Key Features
+
+- Posture detection using Apple Watch’s accelerometer  
+- Detection of lying-down state (oversleep) with continuous haptic alerts  
+- Wake-up confirmation via step detection  
+- Customizable vibration intensity (low / medium / high)  
+- Repeat alarm settings by day of the week  
+- Congratulatory screen upon successful wake-up  
+- Alarm history and oversleep count tracking  
+
+## Supported Platforms
+
+- **iPhone**: iOS 16 or later  
+- **Apple Watch**: watchOS 9 or later (tested on watchOS 11.4)
+
+## System Architecture
+
+### Components
+
+The app consists of the following components:
+
+1. **iPhone App (Host App)**  
+   - Alarm time configuration  
+   - Vibration intensity settings  
+   - Enable/disable alarm  
+
+2. **Apple Watch App (Companion App)**  
+   - Motion sensing  
+   - Oversleep detection  
+   - Haptic alert control  
+   - Wake-up confirmation via step count  
+
+3. **Shared Data Model**  
+   - Device communication via WatchConnectivity  
+   - Persistent settings using UserDefaults  
+
+### Tech Stack
+
+- **Programming Language**: Swift 5.9 or later  
+- **UI Framework**: SwiftUI  
+- **Frameworks Used**:  
+  - WatchKit  
+  - Core Motion (accelerometer)  
+  - WatchConnectivity (device sync)  
+  - HealthKit (background execution)  
+  - UserNotifications (alerts)
+
+## How Oversleeping is Detected
+
+AntiSnooze combines multiple detection methods:
+
+1. **Angle Detection**  
+   - Measures tilt angle using accelerometer  
+   - ≥140° → considered "lying down"  
+   - <80° → considered "upright"  
+   - Hysteresis logic prevents false detection  
+
+2. **Motion Detection**  
+   - Monitors for sustained movement  
+   - Multiple movements in short intervals indicate wakefulness  
+
+3. **Step Detection**  
+   - Uses CMPedometer to count steps  
+   - 8 or more steps within 10 seconds = "awake"  
+
+4. **Oversleep Determination**  
+   - If user remains lying for over 3 minutes after alarm time → "oversleep"  
+   - Triggers haptic alerts  
+
+## Background Execution
+
+Due to watchOS background execution limits, the following methods are combined:
+
+1. **WKExtendedRuntimeSession**  
+   - Maintains sensor access after transitioning to background  
+
+2. **HealthKit Workout Sessions**  
+   - Extends background execution time  
+   - Ensures continuous sensor availability  
+
+## Project Structure
+```
+AntiSnooze/
+  ├─ Shared/              // iPhone・Watch共通コンポーネント
+  │   ├─ Model.swift           // データモデル
+  │   ├─ SettingsManager.swift  // 設定管理
+  │   └─ WatchConnectivityManager.swift // 通信管理
+  │
+  ├─ AntiSnooze/          // iPhone用アプリ
+  │   ├─ Views/                // 画面
+  │   │   ├─ MainView.swift         // メイン画面
+  │   │   └─ AlarmSettingView.swift // 設定画面
+  │   └─ ContentView.swift     // コンテンツビュー
+  │
+  └─ AntiSnoozeWatch Watch App/ // Watch用アプリ
+      ├─ Views/                // 画面
+      │   ├─ WatchMainView.swift    // メイン画面
+      │   ├─ TimeSettingView.swift  // 時間設定画面
+      │   └─ CongratulationsView.swift // お祝い画面
+      └─ Services/             // サービス
+          ├─ AlarmService.swift     // アラーム機能
+          ├─ MotionDetectorService.swift // モーション検知
+          └─ BackgroundModeManager.swift // バックグラウンド管理
+
+```
+## Developer Information
+
+### Development Environment
+
+- **Xcode**: Version 15 or later  
+- **macOS**: Sonoma or later  
+- **Developer Account**: Apple Developer Program (required for real device testing and distribution)
+
+### Build Steps
+
+1. Open the project in Xcode  
+2. Sign the project with a valid developer certificate  
+3. Build and run on connected iPhone and Apple Watch  
+
+### Key Implementation Points
+
+- Sync between iPhone and Watch via `WatchConnectivityManager`  
+- Oversleep detection algorithm in `MotionDetectorService`  
+- Background execution supported by HealthKit integration  
+- Optimized sensor usage for battery efficiency  
+
+## Identifiers
+
+- **Organization Identifier**: com.akkylab  
+- **Bundle Identifier**: com.akkylab.AntiSnooze
+
+## License
+
+This project is released under a proprietary license. See the `LICENSE` file for details.
+
+## Contributing
+
+Please submit bug reports or feature requests via the GitHub issue tracker.  
+Pull requests are welcome.
+
 # AntiSnooze - 二度寝防止アラームアプリ
 
 ## 概要
